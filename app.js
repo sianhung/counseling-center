@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnLogout = document.getElementById('btn-logout');
   const sidebar = document.getElementById('sidebar');
   const btnMenuToggle = document.getElementById('btn-menu-toggle');
+  const btnSidebarToggleClose = document.getElementById('btn-sidebar-toggle-close');
   const btnNewChat = document.getElementById('btn-new-chat');
   const historyList = document.getElementById('history-list');
   const btnBackToHome = document.getElementById('btn-back-to-home');
@@ -185,7 +186,7 @@ Key Principles:
     chatViewHeader.style.display = 'none';
     if (activeChatTitle) activeChatTitle.textContent = 'New Conversation';
     renderHistoryList();
-    if (window.innerWidth <= 768) sidebar.classList.remove('active');
+    sidebar.classList.remove('active');
   };
 
   const switchToSession = (id) => {
@@ -208,7 +209,7 @@ Key Principles:
     if (activeChatTitle) activeChatTitle.textContent = session.title || 'Conversation';
     
     renderHistoryList();
-    if (window.innerWidth <= 768) sidebar.classList.remove('active');
+    sidebar.classList.remove('active');
   };
 
   const saveCurrentSession = (firstMsgText) => {
@@ -384,6 +385,12 @@ Key Principles:
   if (btnMenuToggle) {
     btnMenuToggle.addEventListener('click', () => {
       sidebar.classList.toggle('active');
+    });
+  }
+
+  if (btnSidebarToggleClose) {
+    btnSidebarToggleClose.addEventListener('click', () => {
+      sidebar.classList.remove('active');
     });
   }
 
