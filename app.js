@@ -146,9 +146,9 @@ Key Principles:
     renderHistoryList();
 
     // Onboarding setup
+    initInterestGrid();
     if (!userProfile) {
       if (onboardingFlow) onboardingFlow.style.display = 'flex';
-      initInterestGrid();
     } else {
       if (btnProfile) btnProfile.style.display = 'flex';
     }
@@ -241,16 +241,22 @@ Key Principles:
   const initInterestGrid = () => {
     if (!interestGrid) return;
     interestGrid.innerHTML = '';
+    if (userProfile && userProfile.interests) {
+      selectedInterests = [...userProfile.interests];
+    }
     interestsData.forEach(item => {
       const tag = document.createElement('div');
       tag.className = 'interest-tag';
+      if (selectedInterests.includes(item.id)) {
+        tag.classList.add('selected');
+      }
       tag.textContent = item.label;
       tag.dataset.id = item.id;
       tag.addEventListener('click', () => {
         tag.classList.toggle('selected');
         const id = tag.dataset.id;
         if (tag.classList.contains('selected')) {
-          selectedInterests.push(id);
+          if (!selectedInterests.includes(id)) selectedInterests.push(id);
         } else {
           selectedInterests = selectedInterests.filter(i => i !== id);
         }
@@ -364,10 +370,11 @@ Key Principles:
 
   if (btnFinishOnboarding) {
     btnFinishOnboarding.addEventListener('click', () => {
+      const isExisting = !!userProfile;
       const profile = {
-        phone: inputPhone.value.trim(),
-        name: inputName.value.trim(),
-        dob: inputDOB.value,
+        phone: inputPhone ? inputPhone.value.trim() : '',
+        name: inputName ? inputName.value.trim() : '',
+        dob: inputDOB ? inputDOB.value : '',
         gender: document.querySelector('input[name="gender"]:checked')?.value || '',
         interests: selectedInterests
       };
@@ -376,8 +383,12 @@ Key Principles:
       if (onboardingFlow) onboardingFlow.style.display = 'none';
       if (btnProfile) btnProfile.style.display = 'flex';
       
-      const welcomeText = `မင်္ဂလာပါ ${userProfile.name}၊ အကောင့်ဖန်တီးမှု အောင်မြင်ပါတယ်။ သင့်ကို ဘယ်လိုကူညီပေးရမလဲ?`;
-      appendMessage('bot', welcomeText);
+      if (!isExisting) {
+        const welcomeText = `မင်္ဂလာပါ ${userProfile.name}၊ အကောင့်ဖန်တီးမှု အောင်မြင်ပါတယ်။ သင့်ကို ဘယ်လိုကူညီပေးရမလဲ?`;
+        appendMessage('bot', welcomeText);
+      } else {
+        alert('ဆွေးနွေးလိုသော ခေါင်းစဉ်များကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။');
+      }
     });
   }
 
@@ -432,6 +443,15 @@ Key Principles:
   if (btnSettingAccount) {
     btnSettingAccount.addEventListener('click', () => {
       if (settingsMenu) settingsMenu.classList.remove('active');
+      if (userProfile) {
+        if (inputPhone) inputPhone.value = userProfile.phone || '';
+        if (inputName) inputName.value = userProfile.name || '';
+        if (inputDOB) inputDOB.value = userProfile.dob || '';
+        if (userProfile.gender) {
+          const radio = document.querySelector(`input[name="gender"][value="${userProfile.gender}"]`);
+          if (radio) radio.checked = true;
+        }
+      }
       if (onboardingFlow) {
         onboardingFlow.style.display = 'flex';
         showStep(2); // Jump to Profile step
@@ -442,6 +462,15 @@ Key Principles:
   if (btnSettingTopics) {
     btnSettingTopics.addEventListener('click', () => {
       if (settingsMenu) settingsMenu.classList.remove('active');
+      if (userProfile) {
+        if (inputPhone) inputPhone.value = userProfile.phone || '';
+        if (inputName) inputName.value = userProfile.name || '';
+        if (inputDOB) inputDOB.value = userProfile.dob || '';
+        if (userProfile.gender) {
+          const radio = document.querySelector(`input[name="gender"][value="${userProfile.gender}"]`);
+          if (radio) radio.checked = true;
+        }
+      }
       if (onboardingFlow) {
         onboardingFlow.style.display = 'flex';
         showStep(3); // Jump to Topics step
