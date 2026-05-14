@@ -49,6 +49,10 @@
       <button class="btn-icon" id="btn-theme" title="Toggle Theme">
         <i data-lucide="moon"></i>
       </button>
+
+      <button class="btn-icon" id="btn-profile" title="My Profile" style="display: none;">
+        <i data-lucide="user"></i>
+      </button>
     </div>
   </header>
 
@@ -131,6 +135,131 @@
     </div>
   </div>
 
-  <script src="app.js?v=5.0.6"></script>
+  <!-- Settings / Profile Menu -->
+  <div class="settings-overlay" id="settings-menu">
+    <div class="settings-header">
+      <button class="btn-back" id="btn-close-settings"><i data-lucide="arrow-right"></i></button>
+      <h3 class="modal-title">ဆက်တင်များ</h3>
+    </div>
+    <div class="settings-list">
+      <div class="settings-item">
+        <div class="settings-item-content">
+          <div class="settings-item-icon"><i data-lucide="user"></i></div>
+          <span class="settings-item-title">အကောင့်ဆက်တင်များ</span>
+        </div>
+        <i data-lucide="chevron-right" size="18"></i>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-content">
+          <div class="settings-item-icon"><i data-lucide="users"></i></div>
+          <span class="settings-item-title">လူနာပရိုဖိုင်များ</span>
+        </div>
+        <i data-lucide="chevron-right" size="18"></i>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-content">
+          <div class="settings-item-icon"><i data-lucide="star"></i></div>
+          <span class="settings-item-title">စိတ်ဝင်စားသည့် ကျန်းမာရေး</span>
+        </div>
+        <i data-lucide="chevron-right" size="18"></i>
+      </div>
+    </div>
+    <button class="btn-logout" id="btn-logout">အကောင့်မှထွက်ပါ</button>
+  </div>
+
+  <!-- Onboarding Flow Overlay -->
+  <div class="onboarding-overlay" id="onboarding-flow" style="display: none;">
+    <div class="onboarding-content">
+      
+      <!-- Step 0: Intro -->
+      <div class="onboarding-step active" id="step-intro">
+        <div class="onboarding-logo-container">
+          <img src="assets/logo.svg" alt="Care Me Logo" class="onboarding-logo">
+          <h1 class="onboarding-app-name">Care Me</h1>
+          <p class="onboarding-tagline">ရိုးရှင်းခြင်း • ချိတ်ဆက်ပေးခြင်း • ဂရုစိုက်အလေးထားခြင်း</p>
+        </div>
+        <button class="btn-care" id="btn-start-onboarding">စတင်ပါ</button>
+        <button class="btn-google">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="google-icon">
+          <span>or sign in with Google</span>
+        </button>
+      </div>
+
+      <!-- Step 1: Phone -->
+      <div class="onboarding-step" id="step-phone">
+        <div class="onboarding-header">
+          <button class="btn-back btn-step-back"><i data-lucide="chevron-left"></i></button>
+        </div>
+        <h2 class="onboarding-title">ဖုန်းနံပါတ်</h2>
+        <p class="onboarding-subtitle">သင့်ဖုန်းနံပါတ်ထည့်ပြီး စတင်လိုက်ပါ</p>
+        
+        <div class="form-group">
+          <label class="form-label">ဖုန်းနံပါတ်</label>
+          <div class="phone-input-container">
+            <div class="phone-prefix">
+              <span>MM (+95)</span>
+              <i data-lucide="chevron-down" size="16"></i>
+            </div>
+            <input type="tel" class="phone-input" id="input-phone" placeholder="အကောင့်ဖွင့်ထားသောဖုန်းနံပါတ်...">
+          </div>
+        </div>
+        
+        <div style="flex: 1;"></div>
+        <button class="btn-care" id="btn-phone-next">ဆက်သွားမည်</button>
+      </div>
+
+      <!-- Step 2: Profile -->
+      <div class="onboarding-step" id="step-profile">
+        <div class="onboarding-header">
+          <button class="btn-back btn-step-back"><i data-lucide="chevron-left"></i></button>
+        </div>
+        <h2 class="onboarding-title">သင့်၏အကောင့်ကို ဖန်တီးပါ</h2>
+        <p class="onboarding-subtitle">Care Me မှ ဝန်ဆောင်မှုများကို ရယူရန် ဖြည့်ပါ</p>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">အမည်</label>
+            <input type="text" class="form-input" id="input-name" placeholder="ဥပမာ - John Doe">
+          </div>
+          <div class="form-group">
+            <label class="form-label">မွေးနေ့</label>
+            <input type="date" class="form-input" id="input-dob">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ကျား/မ (ချန်လှပ်ထားနိုင်သည်)</label>
+            <div style="display: flex; gap: 1rem;">
+              <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; background: var(--bg-primary); padding: 0.75rem; border-radius: 12px; border: 1px solid var(--border-color);">
+                <input type="radio" name="gender" value="male"> Male
+              </label>
+              <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; background: var(--bg-primary); padding: 0.75rem; border-radius: 12px; border: 1px solid var(--border-color);">
+                <input type="radio" name="gender" value="female"> Female
+              </label>
+            </div>
+          </div>
+        </div>
+        <div style="flex: 1;"></div>
+        <button class="btn-care" id="btn-profile-next">ဆက်သွားမည်</button>
+      </div>
+
+      <!-- Step 3: Interests -->
+      <div class="onboarding-step" id="step-interests">
+        <div class="onboarding-header">
+          <button class="btn-back btn-step-back"><i data-lucide="chevron-left"></i></button>
+        </div>
+        <h2 class="onboarding-title">စိတ်ဝင်စားသည့် ကျန်းမာရေး</h2>
+        <p class="onboarding-subtitle">သင်စိတ်ဝင်စားသည့် ကျန်းမာရေးအကြောင်းအရာများကို ရွေးချယ်ပါ</p>
+
+        <div class="interest-grid" id="interest-grid">
+          <!-- Dynamically filled -->
+        </div>
+
+        <div style="flex: 1;"></div>
+        <button class="btn-care" id="btn-finish-onboarding">သိမ်းဆည်းမည်</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="app.js?v=6.0.1"></script>
 </body>
 </html>

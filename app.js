@@ -20,6 +20,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiKeyInput = document.getElementById('api-key-input');
   const btnSaveKey = document.getElementById('btn-save-key');
   const quickPrompts = document.querySelectorAll('.prompt-card');
+  const btnProfile = document.getElementById('btn-profile');
+  const onboardingFlow = document.getElementById('onboarding-flow');
+  const settingsMenu = document.getElementById('settings-menu');
+  const onboardingSteps = document.querySelectorAll('.onboarding-step');
+  const btnStartOnboarding = document.getElementById('btn-start-onboarding');
+  const btnPhoneNext = document.getElementById('btn-phone-next');
+  const btnProfileNext = document.getElementById('btn-profile-next');
+  const btnFinishOnboarding = document.getElementById('btn-finish-onboarding');
+  const btnStepBacks = document.querySelectorAll('.btn-step-back');
+  const interestGrid = document.getElementById('interest-grid');
+  const inputPhone = document.getElementById('input-phone');
+  const inputName = document.getElementById('input-name');
+  const inputDOB = document.getElementById('input-dob');
+  const btnCloseSettings = document.getElementById('btn-close-settings');
+  const btnLogout = document.getElementById('btn-logout');
 
   // App State - sanitize stored key if corrupted
   let storedKey = localStorage.getItem('gemini_api_key') || '';
@@ -27,8 +42,24 @@ document.addEventListener('DOMContentLoaded', () => {
   let apiKey = keyMatch ? keyMatch[1] : '';
   let chatHistory = [];
   let isDarkTheme = false;
-  let preferredLang = localStorage.getItem('preferred_lang') || 'bi'; // 'bi' = bilingual, 'en' = English, 'my' = Myanmar
+  let preferredLang = localStorage.getItem('preferred_lang') || 'bi';
+  let userProfile = JSON.parse(localStorage.getItem('user_profile')) || null;
+  let currentStep = 0;
+  let selectedInterests = [];
   let deferredPrompt;
+
+  const interestsData = [
+    { id: 'spiritual', label: 'ဝိညာဉ်ရေးရာ တိုက်ပွဲများနှင့် သံသယများ' },
+    { id: 'marriage', label: 'အိမ်ထောင်ရေးနှင့် မိသားစုဆက်ဆံရေး (ကျမ်းစာအခြေခံ)' },
+    { id: 'guilt', label: 'အပြစ်ရှိသလို ခံစားရခြင်းနှင့် ခွင့်လွှတ်ခြင်း' },
+    { id: 'will', label: 'ဘုရားသခင်၏ အလိုတော်ကို ရှာဖွေခြင်း' },
+    { id: 'grief', label: 'ဝမ်းနည်းပူဆွေးမှုနှင့် မျှော်လင့်ခြင်း' },
+    { id: 'purity', label: 'စာရိတ္တနှင့် စင်ကြယ်ခြင်းဆိုင်ရာ ကိစ္စရပ်များ' },
+    { id: 'church', label: 'အသင်းတော်နှင့် ဝတ်ပြုရေးဆိုင်ရာ စိတ်ဒဏ်ရာများ' },
+    { id: 'identity', label: 'ခရစ်ယာန်တစ်ဦး၏ ကိုယ်ပိုင်လက္ခဏာ' },
+    { id: 'anger', label: 'ဒေါသနှင့် ရန်ငြိုးဖွဲ့ခြင်းကို ကုစားခြင်း' },
+    { id: 'addiction', label: 'စွဲလမ်းမှုများမှ လွတ်မြောက်ခြင်း' }
+  ];
 
   // PWA Service Worker Registration
   if ('serviceWorker' in navigator) {
@@ -92,6 +123,47 @@ Key Principles:
         try { lucide.createIcons(); } catch (e) {}
       }
     }
+
+    // Onboarding setup
+    if (!userProfile) {
+      if (onboardingFlow) onboardingFlow.style.display = 'flex';
+      initInterestGrid();
+    } else {
+      if (btnProfile) btnProfile.style.display = 'flex';
+      // Greet user
+      setTimeout(() => {
+        const welcomeText = userProfile.name ? `မင်္ဂလာပါ ${userProfile.name}၊ Counseling Center မှ ကြိုဆိုပါတယ်။` : 'မင်္ဂလာပါ၊ Counseling Center မှ ကြိုဆိုပါတယ်။';
+        appendMessage('bot', welcomeText);
+      }, 500);
+    }
+  };
+
+  const initInterestGrid = () => {
+    if (!interestGrid) return;
+    interestGrid.innerHTML = '';
+    interestsData.forEach(item => {
+      const tag = document.createElement('div');
+      tag.className = 'interest-tag';
+      tag.textContent = item.label;
+      tag.dataset.id = item.id;
+      tag.addEventListener('click', () => {
+        tag.classList.toggle('selected');
+        const id = tag.dataset.id;
+        if (tag.classList.contains('selected')) {
+          selectedInterests.push(id);
+        } else {
+          selectedInterests = selectedInterests.filter(i => i !== id);
+        }
+      });
+      interestGrid.appendChild(tag);
+    });
+  };
+
+  const showStep = (index) => {
+    onboardingSteps.forEach((step, i) => {
+      step.classList.toggle('active', i === index);
+    });
+    currentStep = index;
   };
 
   // Event Listeners
@@ -163,6 +235,76 @@ Key Principles:
         alert('Language Mode: Auto Detect (Bilingual 🇲🇲 & 🇬🇧)');
       }
       localStorage.setItem('preferred_lang', preferredLang);
+    });
+  }
+
+  if (btnStartOnboarding) {
+    btnStartOnboarding.addEventListener('click', () => showStep(1));
+  }
+
+  if (btnPhoneNext) {
+    btnPhoneNext.addEventListener('click', () => {
+      if (inputPhone && inputPhone.value.trim().length > 5) {
+        showStep(2);
+      } else {
+        alert('ကျေးဇူးပြု၍ ဖုန်းနံပါတ် အမှန်ထည့်ပါ။');
+      }
+    });
+  }
+
+  if (btnProfileNext) {
+    btnProfileNext.addEventListener('click', () => {
+      if (inputName && inputName.value.trim()) {
+        showStep(3);
+      } else {
+        alert('ကျေးဇူးပြု၍ အမည်ထည့်ပါ။');
+      }
+    });
+  }
+
+  if (btnFinishOnboarding) {
+    btnFinishOnboarding.addEventListener('click', () => {
+      const profile = {
+        phone: inputPhone.value.trim(),
+        name: inputName.value.trim(),
+        dob: inputDOB.value,
+        gender: document.querySelector('input[name="gender"]:checked')?.value || '',
+        interests: selectedInterests
+      };
+      localStorage.setItem('user_profile', JSON.stringify(profile));
+      userProfile = profile;
+      if (onboardingFlow) onboardingFlow.style.display = 'none';
+      if (btnProfile) btnProfile.style.display = 'flex';
+      
+      const welcomeText = `မင်္ဂလာပါ ${userProfile.name}၊ အကောင့်ဖန်တီးမှု အောင်မြင်ပါတယ်။ သင့်ကို ဘယ်လိုကူညီပေးရမလဲ?`;
+      appendMessage('bot', welcomeText);
+    });
+  }
+
+  btnStepBacks.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (currentStep > 0) showStep(currentStep - 1);
+    });
+  });
+
+  if (btnProfile) {
+    btnProfile.addEventListener('click', () => {
+      if (settingsMenu) settingsMenu.classList.add('active');
+    });
+  }
+
+  if (btnCloseSettings) {
+    btnCloseSettings.addEventListener('click', () => {
+      if (settingsMenu) settingsMenu.classList.remove('active');
+    });
+  }
+
+  if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+      if (confirm('အကောင့်မှ ထွက်မှာ သေချာပါသလား?')) {
+        localStorage.removeItem('user_profile');
+        location.reload();
+      }
     });
   }
 
