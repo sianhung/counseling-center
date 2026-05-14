@@ -10,3 +10,6 @@ PAGE_ACCESS_TOKEN = "EAANegy5XgKABRUyZBP9xEmJLwhZANzLWPCrOrHZCUEqUBJKaWssi1pVvhY
 [[kv_namespaces]]
 binding = "CHAT_LOGS"
 id = "dd287c3be3ba437ab4ab22b2f53145d3"
+
+[triggers]
+crons = ["* * * * *"]

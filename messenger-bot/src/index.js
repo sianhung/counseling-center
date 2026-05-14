@@ -1,18 +1,18 @@
 /**
  * Facebook Messenger AI Counselor - Cloudflare Worker
- * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Chunking, Human Counselor Handoff, & Live KV Logging Dashboard (with Facebook Profiles)
+ * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Chunking, Human Counselor Handoff, Live KV Dashboard, & 10-Minute Silent User Check-in
  */
 
 // In-Memory cache to pause AI responses for users who request human counselor transfer
 const pausedUsers = new Set();
 
 export default {
+  // ------------------------------------------------------------------------
+  // 0. LIVE CHAT DASHBOARD (GET /dashboard)
+  // ------------------------------------------------------------------------
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // ------------------------------------------------------------------------
-    // 0. LIVE CHAT DASHBOARD (GET /dashboard)
-    // ------------------------------------------------------------------------
     if (request.method === 'GET' && url.pathname === '/dashboard') {
       try {
         const psids = (await env.CHAT_LOGS.get('all_active_psids', { type: 'json' })) || [];
@@ -136,6 +136,40 @@ export default {
     }
 
     return new Response('Method Not Allowed', { status: 405 });
+  },
+
+  // ------------------------------------------------------------------------
+  // 3. SCHEDULED CRON TRIGGER (Runs every minute to check for 10-min silent users)
+  // ------------------------------------------------------------------------
+  async scheduled(event, env, ctx) {
+    console.log('Running scheduled 10-minute check-in job...');
+    if (!env.CHAT_LOGS) return;
+
+    try {
+      const psids = (await env.CHAT_LOGS.get('all_active_psids', { type: 'json' })) || [];
+      const now = Date.now();
+
+      for (const psid of psids) {
+        if (pausedUsers.has(psid)) continue; // Skip users already handed off to human counselor
+
+        const lastActivity = await env.CHAT_LOGS.get(`last_activity_${psid}`);
+        if (!lastActivity) continue;
+
+        const timeDiff = now - parseInt(lastActivity, 10);
+        const promptSent = await env.CHAT_LOGS.get(`prompt_sent_${psid}`);
+
+        // If user has been silent for between 10 and 15 minutes, and transfer prompt not sent yet
+        if (timeDiff >= 10 * 60 * 1000 && timeDiff <= 15 * 60 * 1000 && promptSent !== 'true') {
+          console.log(`PSID ${psid} has been silent for 10 minutes. Delivering separate handoff offer...`);
+          const handoffText = 'ဒီလိုစိတ်ဝင်စားဖို့ကောင်းတဲ့ အကြောင်းအရာကို ဆွေးနွေးပေးလို့ ကျေးဇူးတင်ပါတယ်။ ဒီအကြောင်းနဲ့ပတ်သက်ပြီး အသေးစိတ်ထပ်သိချင်တယ်ဆိုရင်တော့ ကျွန်တော်တို့ရဲ့ နှစ်သိမ့်ဆွေးနွေးအကြံပေးပုဂ္ဂိုလ် (Counsellor) နဲ့ ချိတ်ဆက်ပေးလို့ရပါတယ်။ အခုချက်ချင်း ချိတ်ဆက်ပေးရမလားခင်ဗျာ?';
+          await sendMessengerMessage(psid, handoffText, env.PAGE_ACCESS_TOKEN);
+          await env.CHAT_LOGS.put(`prompt_sent_${psid}`, 'true');
+          await logConversation(psid, '[Silent 10m Timer Check-in]', handoffText, env);
+        }
+      }
+    } catch (err) {
+      console.error('Scheduled Cron Error:', err);
+    }
   }
 };
 
@@ -148,6 +182,12 @@ async function processAndRespond(senderPsid, userMessage, env) {
   // Fetch or cache Facebook Profile Name and Picture
   const userProfile = await getFacebookProfile(senderPsid, env);
   console.log(`Processing chat for user: ${userProfile.name}`);
+
+  // Update user's last activity timestamp for 10-minute check-in timer
+  if (env.CHAT_LOGS) {
+    await env.CHAT_LOGS.put(`last_activity_${senderPsid}`, Date.now().toString());
+    await env.CHAT_LOGS.put(`prompt_sent_${senderPsid}`, 'false');
+  }
 
   if (cleanMsg === 'reset' || cleanMsg === 'restart' || cleanMsg === 'bot' || cleanMsg === 'ai' || cleanMsg === 'စတင်ပါ') {
     pausedUsers.delete(senderPsid);
@@ -180,16 +220,9 @@ async function processAndRespond(senderPsid, userMessage, env) {
     // Log instantly before slow network chunking delivery
     await logConversation(senderPsid, userMessage, geminiResponseText, env);
 
-    // Deliver Message #1
+    // Deliver Message #1 (AI Counseling advice)
     await sendMessengerMessage(senderPsid, geminiResponseText, env.PAGE_ACCESS_TOKEN);
 
-    // Deliver Message #2 (Handoff Prompt) if applicable
-    const isGreeting = geminiResponseText.includes('Counseling Center ကနေ ကြိုဆိုပါတယ်။');
-    if (!isGreeting) {
-      console.log(`Delivering separate counselor handoff prompt (Message #2) to ${senderPsid}...`);
-      const handoffText = 'ဒီလိုစိတ်ဝင်စားဖို့ကောင်းတဲ့ အကြောင်းအရာကို ဆွေးနွေးပေးလို့ ကျေးဇူးတင်ပါတယ်။ ဒီအကြောင်းနဲ့ပတ်သက်ပြီး အသေးစိတ်ထပ်သိချင်တယ်ဆိုရင်တော့ ကျွန်တော်တို့ရဲ့ နှစ်သိမ့်ဆွေးနွေးအကြံပေးပုဂ္ဂိုလ် (Counsellor) နဲ့ ချိတ်ဆက်ပေးလို့ရပါတယ်။ အခုချက်ချင်း ချိတ်ဆက်ပေးရမလားခင်ဗျာ?';
-      await sendMessengerMessage(senderPsid, handoffText, env.PAGE_ACCESS_TOKEN);
-    }
   } catch (error) {
     console.error('Error during processing:', error);
     const errText = 'ခေတ္တစောင့်ဆိုင်းပေးပါ။ စနစ်ချို့ယွင်းမှုတစ်ခုဖြစ်ပေါ်နေသဖြင့် ပြန်လည်ကြိုးစားပေးပါခင်ဗျာ။';
