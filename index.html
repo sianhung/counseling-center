@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="./assets/logo.svg">
   <meta name="theme-color" content="#4f46e5">
 
-  <link rel="stylesheet" href="style.css?v=8.0.2">
+  <link rel="stylesheet" href="style.css?v=8.0.3">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -25,7 +25,6 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-top">
         <button class="btn-icon" id="btn-sidebar-toggle-close"><i data-lucide="menu"></i></button>
-        <button class="btn-icon"><i data-lucide="search"></i></button>
       </div>
       
       <div class="sidebar-header">
@@ -67,9 +66,9 @@
         </div>
         
         <div class="header-actions">
-          <button class="btn-icon" id="btn-lang"><i data-lucide="languages"></i></button>
-          <button class="btn-icon" id="btn-theme"><i data-lucide="moon"></i></button>
-          <button class="btn-icon" id="btn-profile" style="display: none;"><i data-lucide="user"></i></button>
+          <button class="btn-icon" id="btn-lang" title="Switch Language"><i data-lucide="languages"></i></button>
+          <button class="btn-icon" id="btn-theme" title="Toggle Theme"><i data-lucide="moon"></i></button>
+          <button class="btn-icon" id="btn-profile" title="Settings"><i data-lucide="settings"></i></button>
         </div>
       </header>
 
@@ -78,7 +77,6 @@
           <button class="btn-back" id="btn-back-to-home" title="Back to Home"><i data-lucide="chevron-left"></i></button>
           <span class="modal-title" id="active-chat-title">Current Conversation</span>
         </div>
-        <button class="btn-icon" id="btn-chat-options"><i data-lucide="more-vertical"></i></button>
       </div>
 
   <!-- Main Content -->
@@ -132,15 +130,8 @@
     <div class="chat-footer">
       <div class="input-container-outer">
         <div class="input-box">
-          <button class="btn-plus-input"><i data-lucide="plus"></i></button>
-          <button class="btn-tool-input"><i data-lucide="layout-grid"></i><span>Tools</span></button>
-          <textarea id="chat-input" rows="1" placeholder="Ask Gemini..."></textarea>
+          <textarea id="chat-input" rows="1" placeholder="Ask Counseling Center..."></textarea>
           <div class="input-actions-right">
-            <div class="model-selector">
-              <span>Fast</span>
-              <i data-lucide="chevron-down" size="14"></i>
-            </div>
-            <button class="btn-icon-input"><i data-lucide="mic"></i></button>
             <button class="btn-send" id="btn-send" disabled><i data-lucide="send"></i></button>
           </div>
         </div>
@@ -290,6 +281,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.0.2"></script>
+  <script src="app.js?v=8.0.3"></script>
 </body>
 </html>

@@ -551,93 +551,28 @@ Key Principles:
   };
 
   // Guard to prevent double submissions
-let isSending = false;
-const sendMessage = async () => {
-  if (isSending) return; // Prevent duplicate sends
-  isSending = true;
-  try {
-    if (!apiKey) {
-      if (apiModal) apiModal.style.display = 'flex';
-      alert('Please configure your Gemini API key to start chatting.');
-      return;
-    }
-
-    if (!chatInput) return;
-    const text = chatInput.value.trim();
-    if (!text) return;
-
-    // Clear input
-    chatInput.value = '';
-    chatInput.style.height = 'auto';
-    if (btnSend) btnSend.disabled = true;
-
-    // Append user message
-    appendMessage('user', text);
-
-    // Update history
-    chatHistory.push({
-      role: 'user',
-      parts: [{ text }]
-    });
-    
-    saveCurrentSession(text);
-
-    // Show typing
-    const typingIndicator = appendTypingIndicator();
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
-    const payload = {
-      systemInstruction: { parts: [{ text: getSystemPrompt() }] },
-      contents: chatHistory
-    };
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `HTTP Error ${response.status}`);
-    }
-
-    // Remove typing indicator
-    if (typingIndicator) typingIndicator.remove();
-
-    const botBubble = appendMessage('bot', '', true);
-    let fullResponseText = '';
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
-        const jsonStr = trimmedLine.replace(/^data:\s*/, '').trim();
-        if (!jsonStr || jsonStr === '[DONE]') continue;
-        try {
-          const json = JSON.parse(jsonStr);
-          const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (candidateText) {
   let isSending = false;
   const sendMessage = async () => {
     if (isSending) return; // Prevent duplicate sends
     isSending = true;
+    let typingIndicator = null;
     try {
       if (!apiKey) {
         if (apiModal) apiModal.style.display = 'flex';
         alert('Please configure your Gemini API key to start chatting.');
+        isSending = false;
         return;
       }
 
-      if (!chatInput) return;
+      if (!chatInput) {
+        isSending = false;
+        return;
+      }
       const text = chatInput.value.trim();
-      if (!text) return;
+      if (!text) {
+        isSending = false;
+        return;
+      }
 
       // Clear input
       chatInput.value = '';
@@ -656,7 +591,7 @@ const sendMessage = async () => {
       saveCurrentSession(text);
 
       // Show typing
-      const typingIndicator = appendTypingIndicator();
+      typingIndicator = appendTypingIndicator();
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
       const payload = {
@@ -676,6 +611,7 @@ const sendMessage = async () => {
 
       // Remove typing indicator
       if (typingIndicator) typingIndicator.remove();
+      typingIndicator = null;
 
       const botBubble = appendMessage('bot', '', true);
       let fullResponseText = '';
@@ -735,6 +671,11 @@ const sendMessage = async () => {
       if (typingIndicator) typingIndicator.remove();
       console.error('Gemini API Error:', error);
       appendMessage('bot', `⚠️ Could not get response: ${error.message}. Please check your API key and connection.`);
+    } finally {
+      isSending = false;
+      if (chatInput && chatInput.value.trim() && btnSend) {
+        btnSend.disabled = false;
+      }
     }
   };
 
