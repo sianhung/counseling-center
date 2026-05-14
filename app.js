@@ -35,11 +35,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const inputDOB = document.getElementById('input-dob');
   const btnCloseSettings = document.getElementById('btn-close-settings');
   const btnLogout = document.getElementById('btn-logout');
+  const sidebar = document.getElementById('sidebar');
+  const btnMenuToggle = document.getElementById('btn-menu-toggle');
+  const btnNewChat = document.getElementById('btn-new-chat');
+  const historyList = document.getElementById('history-list');
+  const btnBackToHome = document.getElementById('btn-back-to-home');
+  const chatViewHeader = document.getElementById('chat-view-header');
+  const activeChatTitle = document.getElementById('active-chat-title');
+  const btnSidebarSettings = document.getElementById('btn-sidebar-settings');
 
   // App State - sanitize stored key if corrupted
   let storedKey = localStorage.getItem('gemini_api_key') || '';
   const keyMatch = storedKey.match(/(AIzaSy[a-zA-Z0-9_\-]{33})/);
   let apiKey = keyMatch ? keyMatch[1] : '';
+
+  let sessions = JSON.parse(localStorage.getItem('chat_sessions')) || [];
+  let currentSessionId = null;
   let chatHistory = [];
   let isDarkTheme = false;
   let preferredLang = localStorage.getItem('preferred_lang') || 'bi';
@@ -124,18 +135,100 @@ Key Principles:
       }
     }
 
+    // History setup
+    renderHistoryList();
+
     // Onboarding setup
     if (!userProfile) {
       if (onboardingFlow) onboardingFlow.style.display = 'flex';
       initInterestGrid();
     } else {
       if (btnProfile) btnProfile.style.display = 'flex';
-      // Greet user
-      setTimeout(() => {
-        const welcomeText = userProfile.name ? `မင်္ဂလာပါ ${userProfile.name}၊ Counseling Center မှ ကြိုဆိုပါတယ်။` : 'မင်္ဂလာပါ၊ Counseling Center မှ ကြိုဆိုပါတယ်။';
-        appendMessage('bot', welcomeText);
-      }, 500);
     }
+  };
+
+  const renderHistoryList = () => {
+    if (!historyList) return;
+    historyList.innerHTML = '';
+    
+    // Sort by timestamp desc
+    const sorted = [...sessions].sort((a, b) => b.timestamp - a.timestamp);
+    
+    if (sorted.length === 0) {
+      historyList.innerHTML = '<div style="padding: 1rem; font-size: 0.75rem; color: var(--text-secondary); text-align: center;">No recent chats</div>';
+      return;
+    }
+
+    sorted.forEach(session => {
+      const item = document.createElement('div');
+      item.className = `history-item ${session.id === currentSessionId ? 'active' : ''}`;
+      item.innerHTML = `
+        <i data-lucide="message-square" size="16"></i>
+        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${session.title || 'Untitled Chat'}</span>
+      `;
+      item.onclick = () => switchToSession(session.id);
+      historyList.appendChild(item);
+    });
+    
+    if (typeof lucide !== 'undefined') {
+      try { lucide.createIcons(); } catch (e) {}
+    }
+  };
+
+  const createNewChat = () => {
+    currentSessionId = null;
+    chatHistory = [];
+    chatContainer.innerHTML = '';
+    welcomeScreen.style.display = 'flex';
+    chatContainer.style.display = 'none';
+    chatViewHeader.style.display = 'none';
+    if (activeChatTitle) activeChatTitle.textContent = 'New Conversation';
+    renderHistoryList();
+    if (window.innerWidth <= 768) sidebar.classList.remove('active');
+  };
+
+  const switchToSession = (id) => {
+    const session = sessions.find(s => s.id === id);
+    if (!session) return;
+    
+    currentSessionId = session.id;
+    chatHistory = [...session.history];
+    chatContainer.innerHTML = '';
+    
+    // Re-render chat
+    chatHistory.forEach(msg => {
+      const role = msg.role === 'user' ? 'user' : 'bot';
+      appendMessage(role, msg.parts[0].text, false, true);
+    });
+    
+    welcomeScreen.style.display = 'none';
+    chatContainer.style.display = 'flex';
+    chatViewHeader.style.display = 'flex';
+    if (activeChatTitle) activeChatTitle.textContent = session.title || 'Conversation';
+    
+    renderHistoryList();
+    if (window.innerWidth <= 768) sidebar.classList.remove('active');
+  };
+
+  const saveCurrentSession = (firstMsgText) => {
+    if (!currentSessionId) {
+      currentSessionId = 'session_' + Date.now();
+      const title = firstMsgText ? (firstMsgText.substring(0, 30) + (firstMsgText.length > 30 ? '...' : '')) : 'New Chat';
+      sessions.push({
+        id: currentSessionId,
+        title: title,
+        history: chatHistory,
+        timestamp: Date.now()
+      });
+    } else {
+      const idx = sessions.findIndex(s => s.id === currentSessionId);
+      if (idx !== -1) {
+        sessions[idx].history = chatHistory;
+        sessions[idx].timestamp = Date.now();
+      }
+    }
+    localStorage.setItem('chat_sessions', JSON.stringify(sessions));
+    renderHistoryList();
   };
 
   const initInterestGrid = () => {
@@ -287,6 +380,30 @@ Key Principles:
     });
   });
 
+  if (btnMenuToggle) {
+    btnMenuToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('active');
+    });
+  }
+
+  if (btnNewChat) {
+    btnNewChat.addEventListener('click', createNewChat);
+  }
+
+  if (btnSidebarSettings) {
+    btnSidebarSettings.addEventListener('click', () => {
+      if (settingsMenu) settingsMenu.classList.add('active');
+    });
+  }
+
+  if (btnBackToHome) {
+    btnBackToHome.addEventListener('click', () => {
+      welcomeScreen.style.display = 'flex';
+      chatContainer.style.display = 'none';
+      chatViewHeader.style.display = 'none';
+    });
+  }
+
   if (btnProfile) {
     btnProfile.addEventListener('click', () => {
       if (settingsMenu) settingsMenu.classList.add('active');
@@ -361,10 +478,11 @@ Key Principles:
       .join('');
   };
 
-  const appendMessage = (sender, text, isStream = false) => {
-    if (welcomeScreen && welcomeScreen.style.display !== 'none') {
+  const appendMessage = (sender, text, isStream = false, isHistory = false) => {
+    if (welcomeScreen && welcomeScreen.style.display !== 'none' && !isHistory) {
       welcomeScreen.style.display = 'none';
       if (chatContainer) chatContainer.style.display = 'flex';
+      if (chatViewHeader) chatViewHeader.style.display = 'flex';
     }
 
     const wrapper = document.createElement('div');
@@ -456,6 +574,8 @@ Key Principles:
       role: 'user',
       parts: [{ text }]
     });
+    
+    saveCurrentSession(text);
 
     // Show typing
     const typingIndicator = appendTypingIndicator();
@@ -549,6 +669,8 @@ Key Principles:
         role: 'model',
         parts: [{ text: fullResponseText }]
       });
+      
+      saveCurrentSession();
 
     } catch (error) {
       if (typingIndicator) typingIndicator.remove();

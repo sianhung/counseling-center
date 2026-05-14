@@ -20,43 +20,71 @@
 </head>
 <body>
 
-  <!-- Header -->
-  <header>
-    <div class="brand">
-      <div>
-        <h1 class="brand-title">Care Me</h1>
-        <p class="brand-subtitle" id="subtitle-text">Bilingual AI Counseling • 🇲🇲 & 🇬🇧</p>
+  <div class="app-wrapper">
+    <!-- Sidebar (History) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <button class="btn-new-chat" id="btn-new-chat">
+          <i data-lucide="plus"></i>
+          <span>New Chat</span>
+        </button>
       </div>
-    </div>
-    
-    <div class="header-actions">
-      <!-- Install App Button (Visible when installable) -->
-      <button class="btn-pill install-btn" id="btn-install" style="display: none;" aria-label="Install App">
-        <i data-lucide="download"></i>
-        <span>Install App</span>
-      </button>
+      <div class="sidebar-content">
+        <div class="history-section-title">Recent Chats</div>
+        <div class="history-list" id="history-list">
+          <!-- Dynamically filled -->
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <button class="btn-new-chat" id="btn-sidebar-settings">
+          <i data-lucide="settings"></i>
+          <span>Settings</span>
+        </button>
+      </div>
+    </aside>
 
-      <button class="btn-pill" id="btn-api-key" aria-label="API Key Settings">
-        <i data-lucide="key"></i>
-        <span id="api-key-status">Setup API Key</span>
-      </button>
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <!-- Header -->
+      <header>
+        <div class="brand">
+          <button class="btn-icon btn-menu-toggle" id="btn-menu-toggle" aria-label="Toggle Sidebar">
+            <i data-lucide="menu"></i>
+          </button>
+          <div>
+            <h1 class="brand-title">Care Me</h1>
+            <p class="brand-subtitle" id="subtitle-text">Bilingual AI Counseling • 🇲🇲 & 🇬🇧</p>
+          </div>
+        </div>
+        
+        <div class="header-actions">
+          <button class="btn-pill install-btn" id="btn-install" style="display: none;">
+            <i data-lucide="download"></i>
+            <span>Install</span>
+          </button>
 
-      <button class="btn-icon" id="btn-lang" title="Switch Language Prompting">
-        <i data-lucide="languages"></i>
-      </button>
+          <button class="btn-icon" id="btn-lang" title="Switch Language">
+            <i data-lucide="languages"></i>
+          </button>
+          <button class="btn-icon" id="btn-theme" title="Toggle Theme">
+            <i data-lucide="moon"></i>
+          </button>
+          <button class="btn-icon" id="btn-profile" title="My Profile" style="display: none;">
+            <i data-lucide="user"></i>
+          </button>
+        </div>
+      </header>
 
-      <button class="btn-icon" id="btn-theme" title="Toggle Theme">
-        <i data-lucide="moon"></i>
-      </button>
-
-      <button class="btn-icon" id="btn-profile" title="My Profile" style="display: none;">
-        <i data-lucide="user"></i>
-      </button>
-    </div>
-  </header>
+      <div class="chat-view-header" id="chat-view-header">
+        <div class="chat-title-info">
+          <button class="btn-back" id="btn-back-to-home" title="Back to Home"><i data-lucide="chevron-left"></i></button>
+          <span class="modal-title" id="active-chat-title">Current Conversation</span>
+        </div>
+        <button class="btn-icon" id="btn-chat-options"><i data-lucide="more-vertical"></i></button>
+      </div>
 
   <!-- Main Content -->
-  <main>
+      <div class="content-wrapper">
 
     <!-- Welcome / Onboarding Screen -->
     <div class="welcome-container" id="welcome-screen">
@@ -112,7 +140,9 @@
       </div>
     </div>
 
-  </main>
+      </div> <!-- content-wrapper -->
+    </div> <!-- main-content -->
+  </div> <!-- app-wrapper -->
 
   <!-- API Key Modal -->
   <div class="modal-overlay" id="api-modal">
