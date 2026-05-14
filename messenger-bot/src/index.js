@@ -1,7 +1,10 @@
 /**
  * Facebook Messenger AI Counselor - Cloudflare Worker
- * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Chunking, & Counseling Center Branding
+ * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Chunking, & Human Counselor Handoff
  */
+
+// In-Memory cache to pause AI responses for users who request human counselor transfer
+const pausedUsers = new Set();
 
 export default {
   async fetch(request, env, ctx) {
@@ -58,18 +61,43 @@ export default {
 };
 
 /**
- * Main AI Counseling Logic & Separate Chat Bubble Delivery
+ * Main AI Counseling Logic & Human Counselor Handoff
  */
 async function processAndRespond(senderPsid, userMessage, env) {
+  const cleanMsg = userMessage.trim().toLowerCase();
+
+  // Allow user to resume AI chat anytime by saying 'reset', 'restart', 'bot', 'ai', or 'စတင်ပါ'
+  if (cleanMsg === 'reset' || cleanMsg === 'restart' || cleanMsg === 'bot' || cleanMsg === 'ai' || cleanMsg === 'စတင်ပါ') {
+    pausedUsers.delete(senderPsid);
+    await sendMessengerMessage(senderPsid, "AI Chat Assistant ကို ပြန်လည်စတင်လိုက်ပါပြီ။ ဘာများကူညီပေးရမလဲခင်ဗျာ?", env.PAGE_ACCESS_TOKEN);
+    return;
+  }
+
+  // If user is handed off to human counselor, ignore all messages so human counselor can converse
+  if (pausedUsers.has(senderPsid)) {
+    console.log(`PSID ${senderPsid} is in HANDOFF state. Ignoring message so human counselor can converse.`);
+    return;
+  }
+
   try {
     // 1. Call Gemini API with Auto-Rotation
     const geminiResponseText = await callGeminiWithRotation(userMessage, env);
+
+    // 2. Check if Gemini triggered Handoff Activation
+    if (geminiResponseText.startsWith('[HANDOFF_ACTIVATED]')) {
+      const replyText = geminiResponseText.replace('[HANDOFF_ACTIVATED]', '').trim();
+      console.log(`Handoff activated for ${senderPsid}. Pausing bot...`);
+      pausedUsers.add(senderPsid);
+      await sendMessengerMessage(senderPsid, replyText, env.PAGE_ACCESS_TOKEN);
+      return;
+    }
+
     console.log(`Gemini pure response generated for ${senderPsid}. Delivering Message #1...`);
 
-    // 2. Send Pure Counseling/Greeting Response (Message #1 - automatically chunked if long)
+    // 3. Send Pure Counseling/Greeting Response (Message #1 - automatically chunked if long)
     await sendMessengerMessage(senderPsid, geminiResponseText, env.PAGE_ACCESS_TOKEN);
 
-    // 3. If it was a counseling discussion (not initial greeting), send Handoff Prompt in separate bubble (Message #2)
+    // 4. If it was a counseling discussion (not initial greeting), send Handoff Prompt in separate bubble (Message #2)
     const isGreeting = geminiResponseText.includes('Counseling Center ကနေ ကြိုဆိုပါတယ်။');
     if (!isGreeting) {
       console.log(`Delivering separate counselor handoff prompt (Message #2) to ${senderPsid}...`);
@@ -105,7 +133,10 @@ CRITICAL INSTRUCTIONS:
 3. NEVER refer to yourself as "Care Me". You are the AI Chat Assistant representing Counseling Center.
 4. When the user sends an initial greeting (e.g., "hi", "hello", "မင်္ဂလာပါ", "hey", "mingalarbar"), your ENTIRE reply MUST BE EXACTLY ONLY THIS:
 "မင်္ဂလာပါခင်ဗျာ Counseling Center ကနေ ကြိုဆိုပါတယ်။ ကျွန်တော်ကတော့ လူကြီးမင်းကိုကူညီပေးမယ့် AI Chat Assistant ပါ။ ဘယ်လိုအကြောင်းအရာလေးတွေ ဆွေးနွေးချင်ပါသလဲ၊ အားမနာဘဲ ရင်ဖွင့်ပြောပြလို့ ရပါတယ်။"
-5. During actual counseling discussions (when the user shares a problem, question, or counseling topic), provide compassionate biblical Christian counseling advice.
+5. HANDOFF ACTIVATION RULE: If the user agrees to connect with a human counselor (e.g., saying "yes", "ချိတ်ပေးပါ", "ဟုတ်ကဲ့ချိတ်ပေးပါ", "ဟုတ်ကဲ့", "ok", "connect", "ချိတ်ဆက်ပေးပါ", "ရပါတယ်", "ချိတ်ပေး"), your ENTIRE reply MUST BE EXACTLY ONLY THIS:
+"[HANDOFF_ACTIVATED] ဟုတ်ကဲ့ပါခင်ဗျာ၊ လူကြီးမင်းကို Counseling Center မှ နှစ်သိမ့်ဆွေးနွေးအကြံပေးပုဂ္ဂိုလ် (Counsellor) နဲ့ ချိတ်ဆက်ပေးလိုက်ပါပြီ။ ဆရာ/ဆရာမမှ မကြာမီ ပြန်လည်ဖြေကြားပေးပါမည်။ ခေတ္တစောင့်ဆိုင်းပေးပါခင်ဗျာ။"
+DO NOT generate anything else if Handoff is activated.
+6. During actual counseling discussions (when the user shares a problem, question, or counseling topic), provide compassionate biblical Christian counseling advice.
 Keep your counseling responses concise, structured, and digestible (under 350 words / 1500 characters). Avoid generating extremely long walls of text.
 DO NOT include any human counselor transfer offer or closing questions about connecting with a counselor in your generated text. The system will handle sending the transfer offer separately.`;
 
