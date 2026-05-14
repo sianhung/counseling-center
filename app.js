@@ -61,16 +61,16 @@ document.addEventListener('DOMContentLoaded', () => {
   let deferredPrompt;
 
   const interestsData = [
-    { id: 'spiritual', label: 'ဝိညာဉ်ရေးရာ တိုက်ပွဲများနှင့် သံသယများ' },
-    { id: 'marriage', label: 'အိမ်ထောင်ရေးနှင့် မိသားစုဆက်ဆံရေး (ကျမ်းစာအခြေခံ)' },
-    { id: 'guilt', label: 'အပြစ်ရှိသလို ခံစားရခြင်းနှင့် ခွင့်လွှတ်ခြင်း' },
-    { id: 'will', label: 'ဘုရားသခင်၏ အလိုတော်ကို ရှာဖွေခြင်း' },
-    { id: 'grief', label: 'ဝမ်းနည်းပူဆွေးမှုနှင့် မျှော်လင့်ခြင်း' },
-    { id: 'purity', label: 'စာရိတ္တနှင့် စင်ကြယ်ခြင်းဆိုင်ရာ ကိစ္စရပ်များ' },
-    { id: 'church', label: 'အသင်းတော်နှင့် ဝတ်ပြုရေးဆိုင်ရာ စိတ်ဒဏ်ရာများ' },
-    { id: 'identity', label: 'ခရစ်ယာန်တစ်ဦး၏ ကိုယ်ပိုင်လက္ခဏာ' },
-    { id: 'anger', label: 'ဒေါသနှင့် ရန်ငြိုးဖွဲ့ခြင်းကို ကုစားခြင်း' },
-    { id: 'addiction', label: 'စွဲလမ်းမှုများမှ လွတ်မြောက်ခြင်း' }
+    { id: 'spiritual', label: 'ဝိညာဉ်ရေးရာ တိုက်ပွဲများနှင့် သံသယများ (Spiritual Struggles & Doubts)' },
+    { id: 'marriage', label: 'အိမ်ထောင်ရေးနှင့် မိသားစုဆက်ဆံရေး (ကျမ်းစာအခြေခံ) (Biblical Marriage & Family Dynamics)' },
+    { id: 'guilt', label: 'အပြစ်ရှိသလို ခံစားရခြင်းနှင့် ခွင့်လွှတ်ခြင်း (Guilt, Shame & Forgiveness)' },
+    { id: 'will', label: 'ဘုရားသခင်၏ အလိုတော်ကို ရှာဖွေခြင်း (Seeking God’s Will & Discernment)' },
+    { id: 'grief', label: 'ဝမ်းနည်းပူဆွေးမှုနှင့် မျှော်လင့်ခြင်း (Grief & Hope in Suffering)' },
+    { id: 'purity', label: 'စာရိတ္တနှင့် စင်ကြယ်ခြင်းဆိုင်ရာ ကိစ္စရပ်များ (Moral Struggles & Purity)' },
+    { id: 'church', label: 'အသင်းတော်နှင့် ဝတ်ပြုရေးဆိုင်ရာ စိတ်ဒဏ်ရာများ (Church-related Hurt or Trauma)' },
+    { id: 'identity', label: 'ခရစ်ယာန်တစ်ဦး၏ ကိုယ်ပိုင်လက္ခဏာ (Identity in Christ)' },
+    { id: 'anger', label: 'ဒေါသနှင့် ရန်ငြိုးဖွဲ့ခြင်းကို ကုစားခြင်း (Healing Anger & Bitterness)' },
+    { id: 'addiction', label: 'စွဲလမ်းမှုများမှ လွတ်မြောက်ခြင်း (Freedom from Addictions)' }
   ];
 
   // PWA Service Worker Registration
