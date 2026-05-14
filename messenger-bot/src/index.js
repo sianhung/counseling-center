@@ -1,6 +1,6 @@
 /**
  * Facebook Messenger AI Counselor - Cloudflare Worker
- * Built with Google Gemini 1.5 Flash
+ * Built with Google Gemini 2.5 Flash
  */
 
 export default {
@@ -82,7 +82,7 @@ async function processAndRespond(senderPsid, userMessage, env) {
  * Call Google Gemini API with Christian System Instructions
  */
 async function callGeminiAPI(userText, apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   const systemPrompt = `You are a professional Christian AI Counselor named "Care Me" (formerly Counseling Center), speaking fluently in Myanmar (Burmese) language with deep empathy, active listening, and biblical wisdom.
 
