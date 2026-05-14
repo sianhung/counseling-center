@@ -288,7 +288,7 @@ const sendMessage = async () => {
   const typingIndicator = appendTypingIndicator();
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:streamGenerateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=${apiKey}`;
     
     const payload = {
       systemInstruction: {
