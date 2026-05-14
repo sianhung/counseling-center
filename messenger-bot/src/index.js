@@ -1,6 +1,6 @@
 /**
  * Facebook Messenger AI Counselor - Cloudflare Worker
- * Built with Google Gemini 2.5 Flash
+ * Built with Google Gemini 2.5 Flash & Multi-Key Auto-Rotation
  */
 
 export default {
@@ -62,8 +62,8 @@ export default {
  */
 async function processAndRespond(senderPsid, userMessage, env) {
   try {
-    // 1. Call Gemini API
-    const geminiResponseText = await callGeminiAPI(userMessage, env.GEMINI_API_KEY);
+    // 1. Call Gemini API with Auto-Rotation
+    const geminiResponseText = await callGeminiWithRotation(userMessage, env);
     console.log(`Gemini response generated for ${senderPsid}. Delivering...`);
 
     // 2. Send Response to Facebook Messenger
@@ -79,10 +79,15 @@ async function processAndRespond(senderPsid, userMessage, env) {
 }
 
 /**
- * Call Google Gemini API with Christian System Instructions
+ * Call Google Gemini API with Auto-Rotation Pool
  */
-async function callGeminiAPI(userText, apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+async function callGeminiWithRotation(userText, env) {
+  const rawKeys = env.GEMINI_API_KEY || '';
+  const keys = rawKeys.split(/[\s,;\n\r]+/).map(k => k.trim()).filter(k => k.startsWith('AIzaSy'));
+
+  if (keys.length === 0) {
+    throw new Error('No valid Gemini API keys configured.');
+  }
 
   const systemPrompt = `You are a professional Christian AI Counselor named "Care Me" (formerly Counseling Center), speaking fluently in Myanmar (Burmese) language with deep empathy, active listening, and biblical wisdom.
 
@@ -98,20 +103,34 @@ CRITICAL INSTRUCTIONS:
     contents: [{ role: 'user', parts: [{ text: userText }] }]
   };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  let lastError;
+  for (let i = 0; i < keys.length; i++) {
+    const currentKey = keys[i];
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentKey}`;
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error('Gemini API Error Response:', errText);
-    throw new Error(`Gemini API Error: ${response.status} - ${errText}`);
+    try {
+      console.log(`[Gemini Request] Trying API key #${i + 1} (${currentKey.substring(0, 10)}...)`);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.warn(`[Gemini Request] Key #${i + 1} failed (${response.status}): ${errText}`);
+        throw new Error(`Status ${response.status} - ${errText}`);
+      }
+
+      const data = await response.json();
+      console.log(`[Gemini Request] Successfully generated response using key #${i + 1}`);
+      return data.candidates[0].content.parts[0].text;
+    } catch (err) {
+      lastError = err;
+    }
   }
 
-  const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
+  throw new Error(`All Gemini API keys failed in rotation pool. Last error: ${lastError.message}`);
 }
 
 /**
