@@ -1,7 +1,7 @@
 {
-  "name": "Counseling Center",
-  "short_name": "Counseling",
-  "description": "Bilingual AI counseling assistant in Myanmar and English.",
+  "name": "Care Me",
+  "short_name": "Care Me",
+  "description": "Bilingual AI counseling assistant.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f8fafc",
