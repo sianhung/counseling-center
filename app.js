@@ -34,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const inputName = document.getElementById('input-name');
   const inputDOB = document.getElementById('input-dob');
   const btnCloseSettings = document.getElementById('btn-close-settings');
+  const btnSettingAccount = document.getElementById('btn-setting-account');
+  const btnSettingTopics = document.getElementById('btn-setting-topics');
   const btnLogout = document.getElementById('btn-logout');
   const sidebar = document.getElementById('sidebar');
   const btnMenuToggle = document.getElementById('btn-menu-toggle');
@@ -424,6 +426,26 @@ Key Principles:
   if (btnCloseSettings) {
     btnCloseSettings.addEventListener('click', () => {
       if (settingsMenu) settingsMenu.classList.remove('active');
+    });
+  }
+
+  if (btnSettingAccount) {
+    btnSettingAccount.addEventListener('click', () => {
+      if (settingsMenu) settingsMenu.classList.remove('active');
+      if (onboardingFlow) {
+        onboardingFlow.style.display = 'flex';
+        showStep(2); // Jump to Profile step
+      }
+    });
+  }
+
+  if (btnSettingTopics) {
+    btnSettingTopics.addEventListener('click', () => {
+      if (settingsMenu) settingsMenu.classList.remove('active');
+      if (onboardingFlow) {
+        onboardingFlow.style.display = 'flex';
+        showStep(3); // Jump to Topics step
+      }
     });
   }
 
