@@ -1,6 +1,6 @@
 /**
  * Facebook Messenger AI Counselor - Cloudflare Worker
- * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Chunking, & Human Counselor Handoff
+ * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Chunking, Human Counselor Handoff, & Live KV Logging Dashboard
  */
 
 // In-Memory cache to pause AI responses for users who request human counselor transfer
@@ -9,6 +9,78 @@ const pausedUsers = new Set();
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    // ------------------------------------------------------------------------
+    // 0. LIVE CHAT DASHBOARD (GET /dashboard)
+    // ------------------------------------------------------------------------
+    if (request.method === 'GET' && url.pathname === '/dashboard') {
+      try {
+        const psids = (await env.CHAT_LOGS.get('all_active_psids', { type: 'json' })) || [];
+        let htmlRows = '';
+
+        for (const psid of psids) {
+          const logs = (await env.CHAT_LOGS.get(`psid_${psid}`, { type: 'json' })) || [];
+          for (const log of logs) {
+            const timeStr = new Date(log.timestamp).toLocaleString();
+            htmlRows += `
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px; font-family: monospace; font-size: 0.85rem; color: #4b5563;">${psid}</td>
+                <td style="padding: 12px; font-weight: 500; color: #1f2937;">${log.user_message || '[File/Audio/Sticker]'}</td>
+                <td style="padding: 12px; color: #374151; background: #f9fafb;">${log.ai_response || '[Handoff / Greeting]'}</td>
+                <td style="padding: 12px; font-size: 0.8rem; color: #6b7280; white-space: nowrap;">${timeStr}</td>
+              </tr>
+            `;
+          }
+        }
+
+        const html = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Counseling Center — Live Chat Dashboard</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f3f4f6; }
+              .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; max-width: 1200px; margin: 0 auto; }
+              .header { background: #4f46e5; color: white; padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+              h1 { margin: 0; font-size: 1.5rem; }
+              table { width: 100%; border-collapse: collapse; text-align: left; }
+              th { background: #f3f4f6; padding: 12px; font-weight: 600; color: #374151; font-size: 0.9rem; text-transform: uppercase; tracking: wider; border-bottom: 2px solid #e5e7eb; }
+              tr:hover { background: #fefefe; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="header">
+                <h1>💬 Live Facebook Messenger Chat Logs</h1>
+                <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 99px; font-size: 0.85rem;">Active PSIDs: ${psids.length}</span>
+              </div>
+              <div style="overflow-x: auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>PSID (User ID)</th>
+                      <th>Incoming Message</th>
+                      <th>AI Response</th>
+                      <th>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${htmlRows || '<tr><td colspan="4" style="padding: 2rem; text-align: center; color: #6b7280;">No chat messages logged yet. Send a message on Messenger to see it here!</td></tr>'}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+
+        return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      } catch (err) {
+        return new Response(`Dashboard Error: ${err.message}`, { status: 500 });
+      }
+    }
 
     // ------------------------------------------------------------------------
     // 1. FACEBOOK WEBHOOK VERIFICATION (GET Request)
@@ -61,7 +133,7 @@ export default {
 };
 
 /**
- * Main AI Counseling Logic & Human Counselor Handoff
+ * Main AI Counseling Logic, Human Counselor Handoff, & KV Logging
  */
 async function processAndRespond(senderPsid, userMessage, env) {
   const cleanMsg = userMessage.trim().toLowerCase();
@@ -69,13 +141,16 @@ async function processAndRespond(senderPsid, userMessage, env) {
   // Allow user to resume AI chat anytime by saying 'reset', 'restart', 'bot', 'ai', or 'စတင်ပါ'
   if (cleanMsg === 'reset' || cleanMsg === 'restart' || cleanMsg === 'bot' || cleanMsg === 'ai' || cleanMsg === 'စတင်ပါ') {
     pausedUsers.delete(senderPsid);
-    await sendMessengerMessage(senderPsid, "AI Chat Assistant ကို ပြန်လည်စတင်လိုက်ပါပြီ။ ဘာများကူညီပေးရမလဲခင်ဗျာ?", env.PAGE_ACCESS_TOKEN);
+    const replyText = "AI Chat Assistant ကို ပြန်လည်စတင်လိုက်ပါပြီ။ ဘာများကူညီပေးရမလဲခင်ဗျာ?";
+    await sendMessengerMessage(senderPsid, replyText, env.PAGE_ACCESS_TOKEN);
+    await logConversation(senderPsid, userMessage, replyText, env);
     return;
   }
 
   // If user is handed off to human counselor, ignore all messages so human counselor can converse
   if (pausedUsers.has(senderPsid)) {
     console.log(`PSID ${senderPsid} is in HANDOFF state. Ignoring message so human counselor can converse.`);
+    await logConversation(senderPsid, userMessage, "[PAUSED - Human Counselor Handoff State]", env);
     return;
   }
 
@@ -89,6 +164,7 @@ async function processAndRespond(senderPsid, userMessage, env) {
       console.log(`Handoff activated for ${senderPsid}. Pausing bot...`);
       pausedUsers.add(senderPsid);
       await sendMessengerMessage(senderPsid, replyText, env.PAGE_ACCESS_TOKEN);
+      await logConversation(senderPsid, userMessage, replyText, env);
       return;
     }
 
@@ -97,7 +173,10 @@ async function processAndRespond(senderPsid, userMessage, env) {
     // 3. Send Pure Counseling/Greeting Response (Message #1 - automatically chunked if long)
     await sendMessengerMessage(senderPsid, geminiResponseText, env.PAGE_ACCESS_TOKEN);
 
-    // 4. If it was a counseling discussion (not initial greeting), send Handoff Prompt in separate bubble (Message #2)
+    // 4. Log conversation to KV
+    await logConversation(senderPsid, userMessage, geminiResponseText, env);
+
+    // 5. If it was a counseling discussion (not initial greeting), send Handoff Prompt in separate bubble (Message #2)
     const isGreeting = geminiResponseText.includes('Counseling Center ကနေ ကြိုဆိုပါတယ်။');
     if (!isGreeting) {
       console.log(`Delivering separate counselor handoff prompt (Message #2) to ${senderPsid}...`);
@@ -106,11 +185,38 @@ async function processAndRespond(senderPsid, userMessage, env) {
     }
   } catch (error) {
     console.error('Error during processing:', error);
-    await sendMessengerMessage(
-      senderPsid,
-      'ခေတ္တစောင့်ဆိုင်းပေးပါ။ စနစ်ချို့ယွင်းမှုတစ်ခုဖြစ်ပေါ်နေသဖြင့် ပြန်လည်ကြိုးစားပေးပါခင်ဗျာ။',
-      env.PAGE_ACCESS_TOKEN
-    );
+    const errText = 'ခေတ္တစောင့်ဆိုင်းပေးပါ။ စနစ်ချို့ယွင်းမှုတစ်ခုဖြစ်ပေါ်နေသဖြင့် ပြန်လည်ကြိုးစားပေးပါခင်ဗျာ။';
+    await sendMessengerMessage(senderPsid, errText, env.PAGE_ACCESS_TOKEN);
+    await logConversation(senderPsid, userMessage, `[ERROR] ${error.message}`, env);
+  }
+}
+
+/**
+ * Log conversation thread into Cloudflare KV Storage
+ */
+async function logConversation(psid, userMsg, aiReply, env) {
+  if (!env.CHAT_LOGS) return;
+  try {
+    const key = `psid_${psid}`;
+    const existing = (await env.CHAT_LOGS.get(key, { type: 'json' })) || [];
+    existing.push({
+      timestamp: new Date().toISOString(),
+      user_message: userMsg,
+      ai_response: aiReply
+    });
+    // Keep last 50 messages per user to avoid exceeding KV size limits
+    if (existing.length > 50) existing.shift();
+    await env.CHAT_LOGS.put(key, JSON.stringify(existing));
+
+    // Also maintain index list of all active PSIDs
+    const indexKey = 'all_active_psids';
+    const psids = (await env.CHAT_LOGS.get(indexKey, { type: 'json' })) || [];
+    if (!psids.includes(psid)) {
+      psids.push(psid);
+      await env.CHAT_LOGS.put(indexKey, JSON.stringify(psids));
+    }
+  } catch (e) {
+    console.error('Failed to log conversation to KV:', e);
   }
 }
 
