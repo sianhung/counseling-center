@@ -1,5 +1,7 @@
-// Initialize Lucide icons
-lucide.createIcons();
+// Initialize Lucide icons safely
+if (typeof lucide !== 'undefined') {
+  try { lucide.createIcons(); } catch (e) { console.warn('Lucide icons error:', e); }
+}
 
 // DOM Elements
 const welcomeScreen = document.getElementById('welcome-screen');
@@ -81,8 +83,9 @@ const initUI = () => {
   if (savedTheme === 'dark') {
     isDarkTheme = true;
     document.documentElement.setAttribute('data-theme', 'dark');
-    btnTheme.innerHTML = '<i data-lucide="sun"></i>';
-    lucide.createIcons();
+    if (typeof lucide !== 'undefined') {
+      try { lucide.createIcons(); } catch (e) {}
+    }
   }
 };
 
@@ -126,7 +129,9 @@ btnTheme.addEventListener('click', () => {
     localStorage.setItem('app_theme', 'light');
     btnTheme.innerHTML = '<i data-lucide="moon"></i>';
   }
-  lucide.createIcons();
+  if (typeof lucide !== 'undefined') {
+    try { lucide.createIcons(); } catch (e) {}
+  }
 });
 
 btnLang.addEventListener('click', () => {
