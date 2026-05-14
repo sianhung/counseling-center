@@ -5,11 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-jobs
-    
+jobs:
   build:
-      permissions:
-            contents: write
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source

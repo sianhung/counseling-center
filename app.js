@@ -1,4 +1,4 @@
-// Counseling Center AI Assistant - v5.0.0
+// Care Me AI Assistant - v7.0.0
 // Initialize Lucide icons safely on load
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof lucide !== 'undefined') {
