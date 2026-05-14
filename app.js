@@ -359,15 +359,15 @@ Key Principles:
 
         buffer += decoder.decode(value, { stream: true });
         
-        // Split into SSE messages
-        const messages = buffer.split('\n\n');
-        
-        // Process complete messages
-        for (let i = 0; i < messages.length - 1; i++) {
-          const message = messages[i].trim();
-          if (!message.startsWith('data: ')) continue;
+        const lines = buffer.split(/\r?\n/);
+        // The last element might be a partial line, so keep it in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
           
-          const jsonStr = message.substring(6).trim();
+          const jsonStr = trimmedLine.replace(/^data:\s*/, '').trim();
           if (!jsonStr || jsonStr === '[DONE]') continue;
 
           try {
@@ -379,16 +379,14 @@ Key Principles:
               if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
             }
           } catch (e) {
-            console.error('Failed to parse chunk:', e, jsonStr);
+            console.error('Failed to parse SSE JSON:', e, jsonStr);
           }
         }
-        // Keep the last incomplete message in the buffer
-        buffer = messages[messages.length - 1];
       }
 
-      // Handle any remaining data in the buffer when the stream is done
-      if (buffer.trim().startsWith('data: ')) {
-        const jsonStr = buffer.trim().substring(6).trim();
+      // Final check of the buffer after the stream ends
+      if (buffer.trim().startsWith('data:')) {
+        const jsonStr = buffer.trim().replace(/^data:\s*/, '').trim();
         try {
           if (jsonStr && jsonStr !== '[DONE]') {
             const json = JSON.parse(jsonStr);
@@ -400,7 +398,7 @@ Key Principles:
             }
           }
         } catch (e) {
-          // ignore
+          // ignore error in final buffer flush
         }
       }
 
