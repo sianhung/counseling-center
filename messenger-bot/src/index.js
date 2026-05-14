@@ -1,6 +1,6 @@
 /**
  * Facebook Messenger AI Counselor - Cloudflare Worker
- * Built with Google Gemini 2.5 Flash & Multi-Key Auto-Rotation
+ * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, & Separate Bubble Delivery
  */
 
 export default {
@@ -58,16 +58,24 @@ export default {
 };
 
 /**
- * Main AI Counseling Logic & Messenger Delivery
+ * Main AI Counseling Logic & Separate Chat Bubble Delivery
  */
 async function processAndRespond(senderPsid, userMessage, env) {
   try {
     // 1. Call Gemini API with Auto-Rotation
     const geminiResponseText = await callGeminiWithRotation(userMessage, env);
-    console.log(`Gemini response generated for ${senderPsid}. Delivering...`);
+    console.log(`Gemini pure response generated for ${senderPsid}. Delivering Message #1...`);
 
-    // 2. Send Response to Facebook Messenger
+    // 2. Send Pure Counseling/Greeting Response (Message #1)
     await sendMessengerMessage(senderPsid, geminiResponseText, env.PAGE_ACCESS_TOKEN);
+
+    // 3. If it was a counseling discussion (not initial greeting), send Handoff Prompt in separate bubble (Message #2)
+    const isGreeting = geminiResponseText.includes('Counseling Center ကနေ ကြိုဆိုပါတယ်။');
+    if (!isGreeting) {
+      console.log(`Delivering separate counselor handoff prompt (Message #2) to ${senderPsid}...`);
+      const handoffText = 'ဒီလိုစိတ်ဝင်စားဖို့ကောင်းတဲ့ အကြောင်းအရာကို ဆွေးနွေးပေးလို့ ကျေးဇူးတင်ပါတယ်။ ဒီအကြောင်းနဲ့ပတ်သက်ပြီး အသေးစိတ်ထပ်သိချင်တယ်ဆိုရင်တော့ ကျွန်တော်တို့ရဲ့ နှစ်သိမ့်ဆွေးနွေးအကြံပေးပုဂ္ဂိုလ် (Counsellor) နဲ့ ချိတ်ဆက်ပေးလို့ရပါတယ်။ အခုချက်ချင်း ချိတ်ဆက်ပေးရမလားခင်ဗျာ?';
+      await sendMessengerMessage(senderPsid, handoffText, env.PAGE_ACCESS_TOKEN);
+    }
   } catch (error) {
     console.error('Error during processing:', error);
     await sendMessengerMessage(
@@ -79,7 +87,7 @@ async function processAndRespond(senderPsid, userMessage, env) {
 }
 
 /**
- * Call Google Gemini API with Auto-Rotation Pool & Specific Greeting
+ * Call Google Gemini API with Auto-Rotation Pool
  */
 async function callGeminiWithRotation(userText, env) {
   const rawKeys = env.GEMINI_API_KEY || '';
@@ -94,11 +102,10 @@ async function callGeminiWithRotation(userText, env) {
 CRITICAL INSTRUCTIONS:
 1. Always maintain a warm, gentle, empathetic, and non-judgmental tone.
 2. Directly or indirectly, every counseling conversation must point to Jesus Christ, His love, redemption, grace, and peace.
-3. When the user sends an initial greeting (e.g., "hi", "hello", "မင်္ဂလာပါ", "hey"), your ENTIRE reply MUST BE EXACTLY ONLY THIS:
+3. When the user sends an initial greeting (e.g., "hi", "hello", "မင်္ဂလာပါ", "hey", "mingalarbar"), your ENTIRE reply MUST BE EXACTLY ONLY THIS:
 "မင်္ဂလာပါခင်ဗျာ Counseling Center ကနေ ကြိုဆိုပါတယ်။ ကျွန်တော်ကတော့ လူကြီးမင်းကိုကူညီပေးမယ့် AI Chat Assistant ပါ။ ဘယ်လိုအကြောင်းအရာလေးတွေ ဆွေးနွေးချင်ပါသလဲ၊ အားမနာဘဲ ရင်ဖွင့်ပြောပြလို့ ရပါတယ်။"
-DO NOT append anything else to this greeting.
-4. ONLY during actual counseling discussions (when the user shares a problem, question, or counseling topic), at the absolute end of your counseling response, you MUST append exactly this Myanmar prompt offering transfer to a human counselor:
-"ဒီလိုစိတ်ဝင်စားဖို့ကောင်းတဲ့ အကြောင်းအရာကို ဆွေးနွေးပေးလို့ ကျေးဇူးတင်ပါတယ်။ ဒီအကြောင်းနဲ့ပတ်သက်ပြီး အသေးစိတ်ထပ်သိချင်တယ်ဆိုရင်တော့ ကျွန်တော်တို့ရဲ့ နှစ်သိမ့်ဆွေးနွေးအကြံပေးပုဂ္ဂိုလ် (Counsellor) နဲ့ ချိတ်ဆက်ပေးလို့ရပါတယ်။ အခုချက်ချင်း ချိတ်ဆက်ပေးရမလားခင်ဗျာ?"`;
+4. During actual counseling discussions (when the user shares a problem, question, or counseling topic), provide compassionate biblical Christian counseling advice.
+DO NOT include any human counselor transfer offer or closing questions about connecting with a counselor in your generated text. The system will handle sending the transfer offer separately.`;
 
   const payload = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
