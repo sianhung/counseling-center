@@ -1,6 +1,6 @@
 /**
  * Facebook Messenger AI Counselor - Cloudflare Worker
- * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Chunking, Human Counselor Handoff, & Live KV Logging Dashboard
+ * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Chunking, Human Counselor Handoff, & Live KV Logging Dashboard (with Facebook Profiles)
  */
 
 // In-Memory cache to pause AI responses for users who request human counselor transfer
@@ -19,12 +19,21 @@ export default {
         let htmlRows = '';
 
         for (const psid of psids) {
+          const profile = (await env.CHAT_LOGS.get(`profile_${psid}`, { type: 'json' })) || { name: `User ${psid}`, pic: '' };
           const logs = (await env.CHAT_LOGS.get(`psid_${psid}`, { type: 'json' })) || [];
           for (const log of logs) {
             const timeStr = new Date(log.timestamp).toLocaleString();
             htmlRows += `
               <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 12px; font-family: monospace; font-size: 0.85rem; color: #4b5563;">${psid}</td>
+                <td style="padding: 12px; font-weight: 600; color: #4f46e5; min-width: 180px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    ${profile.pic ? `<img src="${profile.pic}" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #e5e7eb;">` : `<div style="width: 32px; height: 32px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 14px;">👤</div>`}
+                    <div>
+                      <div style="font-size: 0.95rem; color: #111827;">${profile.name}</div>
+                      <div style="font-size: 0.7rem; color: #6b7280; font-family: monospace;">PSID: ${psid}</div>
+                    </div>
+                  </div>
+                </td>
                 <td style="padding: 12px; font-weight: 500; color: #1f2937;">${log.user_message || '[File/Audio/Sticker]'}</td>
                 <td style="padding: 12px; color: #374151; background: #f9fafb;">${log.ai_response || '[Handoff / Greeting]'}</td>
                 <td style="padding: 12px; font-size: 0.8rem; color: #6b7280; white-space: nowrap;">${timeStr}</td>
@@ -42,7 +51,7 @@ export default {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
               body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f3f4f6; }
-              .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; max-width: 1200px; margin: 0 auto; }
+              .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; max-width: 1400px; margin: 0 auto; }
               .header { background: #4f46e5; color: white; padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; }
               h1 { margin: 0; font-size: 1.5rem; }
               table { width: 100%; border-collapse: collapse; text-align: left; }
@@ -54,13 +63,13 @@ export default {
             <div class="card">
               <div class="header">
                 <h1>💬 Live Facebook Messenger Chat Logs</h1>
-                <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 99px; font-size: 0.85rem;">Active PSIDs: ${psids.length}</span>
+                <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 99px; font-size: 0.85rem; font-weight: 600;">Active Users: ${psids.length}</span>
               </div>
               <div style="overflow-x: auto;">
                 <table>
                   <thead>
                     <tr>
-                      <th>PSID (User ID)</th>
+                      <th>User Profile</th>
                       <th>Incoming Message</th>
                       <th>AI Response</th>
                       <th>Timestamp</th>
@@ -131,10 +140,14 @@ export default {
 };
 
 /**
- * Main AI Counseling Logic, Human Counselor Handoff, & Synchronous KV Logging
+ * Main AI Counseling Logic, Human Counselor Handoff, Profile Fetching, & Synchronous KV Logging
  */
 async function processAndRespond(senderPsid, userMessage, env) {
   const cleanMsg = userMessage.trim().toLowerCase();
+
+  // Fetch or cache Facebook Profile Name and Picture
+  const userProfile = await getFacebookProfile(senderPsid, env);
+  console.log(`Processing chat for user: ${userProfile.name}`);
 
   if (cleanMsg === 'reset' || cleanMsg === 'restart' || cleanMsg === 'bot' || cleanMsg === 'ai' || cleanMsg === 'စတင်ပါ') {
     pausedUsers.delete(senderPsid);
@@ -183,6 +196,33 @@ async function processAndRespond(senderPsid, userMessage, env) {
     await logConversation(senderPsid, userMessage, `[ERROR] ${error.message}`, env);
     await sendMessengerMessage(senderPsid, errText, env.PAGE_ACCESS_TOKEN);
   }
+}
+
+/**
+ * Fetch Facebook Profile (Name & Picture) via Meta Graph API with KV Caching
+ */
+async function getFacebookProfile(psid, env) {
+  if (!env.CHAT_LOGS) return { name: `User (${psid})`, pic: '' };
+  try {
+    const profileKey = `profile_${psid}`;
+    const cached = await env.CHAT_LOGS.get(profileKey, { type: 'json' });
+    if (cached && cached.name) return cached;
+
+    const url = `https://graph.facebook.com/v21.0/${psid}?fields=first_name,last_name,name,profile_pic&access_token=${env.PAGE_ACCESS_TOKEN}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const profile = {
+        name: data.name || `${data.first_name || ''} ${data.last_name || ''}`.trim() || `User ${psid}`,
+        pic: data.profile_pic || ''
+      };
+      await env.CHAT_LOGS.put(profileKey, JSON.stringify(profile));
+      return profile;
+    }
+  } catch (e) {
+    console.error('Failed to fetch FB profile:', e);
+  }
+  return { name: `User (${psid})`, pic: '' };
 }
 
 /**
