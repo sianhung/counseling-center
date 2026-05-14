@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // App State - sanitize stored key if corrupted
   let storedKey = localStorage.getItem('gemini_api_key') || '';
-  const keyMatch = storedKey.match(/(AIzaSy[a-zA-Z0-9_\-]{30,})/);
+  const keyMatch = storedKey.match(/(AIzaSy[a-zA-Z0-9_\-]{33})/);
   let apiKey = keyMatch ? keyMatch[1] : '';
   let chatHistory = [];
   let isDarkTheme = false;
@@ -119,7 +119,7 @@ Key Principles:
   if (btnSaveKey && apiKeyInput && apiModal && apiKeyStatus) {
     btnSaveKey.addEventListener('click', () => {
       const rawVal = apiKeyInput.value.trim();
-      const match = rawVal.match(/(AIzaSy[a-zA-Z0-9_\-]{30,})/);
+      const match = rawVal.match(/(AIzaSy[a-zA-Z0-9_\-]{33})/);
       if (match) {
         apiKey = match[1];
         localStorage.setItem('gemini_api_key', apiKey);
