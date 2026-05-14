@@ -1,6 +1,6 @@
 /**
  * Facebook Messenger AI Counselor - Cloudflare Worker
- * Built with Google Gemini 2.5 Flash
+ * Built with Google Gemini 1.5 Flash
  */
 
 export default {
@@ -38,6 +38,7 @@ export default {
             // Ignore messages sent by the bot itself or delivery receipts
             if (webhookEvent.message && !webhookEvent.message.is_echo) {
               const userMessage = webhookEvent.message.text || '';
+              console.log(`Received message from PSID ${senderPsid}: "${userMessage}"`);
 
               // Process AI response asynchronously
               ctx.waitUntil(processAndRespond(senderPsid, userMessage, env));
@@ -63,6 +64,7 @@ async function processAndRespond(senderPsid, userMessage, env) {
   try {
     // 1. Call Gemini API
     const geminiResponseText = await callGeminiAPI(userMessage, env.GEMINI_API_KEY);
+    console.log(`Gemini response generated for ${senderPsid}. Delivering...`);
 
     // 2. Send Response to Facebook Messenger
     await sendMessengerMessage(senderPsid, geminiResponseText, env.PAGE_ACCESS_TOKEN);
@@ -80,7 +82,7 @@ async function processAndRespond(senderPsid, userMessage, env) {
  * Call Google Gemini API with Christian System Instructions
  */
 async function callGeminiAPI(userText, apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   const systemPrompt = `You are a professional Christian AI Counselor named "Care Me" (formerly Counseling Center), speaking fluently in Myanmar (Burmese) language with deep empathy, active listening, and biblical wisdom.
 
@@ -103,7 +105,9 @@ CRITICAL INSTRUCTIONS:
   });
 
   if (!response.ok) {
-    throw new Error(`Gemini API Error: ${response.status}`);
+    const errText = await response.text();
+    console.error('Gemini API Error Response:', errText);
+    throw new Error(`Gemini API Error: ${response.status} - ${errText}`);
   }
 
   const data = await response.json();
@@ -114,11 +118,6 @@ CRITICAL INSTRUCTIONS:
  * Send Message via Meta Graph API
  */
 async function sendMessengerMessage(recipientId, textText, pageToken) {
-  if (pageToken === 'PASTE_YOUR_FACEBOOK_PAGE_ACCESS_TOKEN_HERE') {
-    console.warn('PLEASE REPLACE PAGE_ACCESS_TOKEN IN WRANGLER TOML OR CLOUDFLARE DASHBOARD');
-    return;
-  }
-
   const url = `https://graph.facebook.com/v21.0/me/messages?access_token=${pageToken}`;
 
   // Facebook Messenger limits single message chunks to 2000 characters
@@ -138,5 +137,8 @@ async function sendMessengerMessage(recipientId, textText, pageToken) {
   if (!response.ok) {
     const errText = await response.text();
     console.error('Meta Graph API Error:', errText);
+    throw new Error(`Meta Graph API Error: ${response.status} - ${errText}`);
+  } else {
+    console.log(`Message delivered successfully to PSID ${recipientId}`);
   }
 }
