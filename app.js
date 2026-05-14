@@ -1,4 +1,4 @@
-// Care Me AI Assistant - v7.0.0
+// Counseling Center AI Assistant - v8.0.0
 // Initialize Lucide icons safely on load
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof lucide !== 'undefined') {
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // System Prompt
   const getSystemPrompt = () => {
-    return `You are a warm, compassionate, and highly professional AI counseling assistant for "Care Me". 
+    return `You are a warm, compassionate, and highly professional AI counseling assistant for "Counseling Center". 
 You are fluent in both Myanmar (Burmese) language and English.
 
 Key Principles:
@@ -550,7 +550,12 @@ Key Principles:
     return wrapper;
   };
 
-  const sendMessage = async () => {
+  // Guard to prevent double submissions
+let isSending = false;
+const sendMessage = async () => {
+  if (isSending) return; // Prevent duplicate sends
+  isSending = true;
+  try {
     if (!apiKey) {
       if (apiModal) apiModal.style.display = 'flex';
       alert('Please configure your Gemini API key to start chatting.');
@@ -580,21 +585,87 @@ Key Principles:
     // Show typing
     const typingIndicator = appendTypingIndicator();
 
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const payload = {
+      systemInstruction: { parts: [{ text: getSystemPrompt() }] },
+      contents: chatHistory
+    };
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `HTTP Error ${response.status}`);
+    }
+
+    // Remove typing indicator
+    if (typingIndicator) typingIndicator.remove();
+
+    const botBubble = appendMessage('bot', '', true);
+    let fullResponseText = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
+        const jsonStr = trimmedLine.replace(/^data:\s*/, '').trim();
+        if (!jsonStr || jsonStr === '[DONE]') continue;
+        try {
+          const json = JSON.parse(jsonStr);
+          const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (candidateText) {
+  let isSending = false;
+  const sendMessage = async () => {
+    if (isSending) return; // Prevent duplicate sends
+    isSending = true;
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+      if (!apiKey) {
+        if (apiModal) apiModal.style.display = 'flex';
+        alert('Please configure your Gemini API key to start chatting.');
+        return;
+      }
+
+      if (!chatInput) return;
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      // Clear input
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+      if (btnSend) btnSend.disabled = true;
+
+      // Append user message
+      appendMessage('user', text);
+
+      // Update history
+      chatHistory.push({
+        role: 'user',
+        parts: [{ text }]
+      });
       
+      saveCurrentSession(text);
+
+      // Show typing
+      const typingIndicator = appendTypingIndicator();
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
       const payload = {
-        systemInstruction: {
-          parts: [{ text: getSystemPrompt() }]
-        },
+        systemInstruction: { parts: [{ text: getSystemPrompt() }] },
         contents: chatHistory
       };
-
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -606,32 +677,22 @@ Key Principles:
       // Remove typing indicator
       if (typingIndicator) typingIndicator.remove();
 
-      // Create bot message container for streaming
       const botBubble = appendMessage('bot', '', true);
       let fullResponseText = '';
-
-      // Parse SSE stream
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
-        
         const lines = buffer.split(/\r?\n/);
-        // The last element might be a partial line, so keep it in the buffer
         buffer = lines.pop() || '';
-
         for (const line of lines) {
           const trimmedLine = line.trim();
           if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
-          
           const jsonStr = trimmedLine.replace(/^data:\s*/, '').trim();
           if (!jsonStr || jsonStr === '[DONE]') continue;
-
           try {
             const json = JSON.parse(jsonStr);
             const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -645,8 +706,6 @@ Key Principles:
           }
         }
       }
-
-      // Final check of the buffer after the stream ends
       if (buffer.trim().startsWith('data:')) {
         const jsonStr = buffer.trim().replace(/^data:\s*/, '').trim();
         try {

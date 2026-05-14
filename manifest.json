@@ -1,6 +1,6 @@
 {
-  "name": "Care Me",
-  "short_name": "Care Me",
+  "name": "Counseling Center",
+  "short_name": "Counseling Center",
   "description": "Bilingual AI counseling assistant.",
   "start_url": "./index.html",
   "display": "standalone",
