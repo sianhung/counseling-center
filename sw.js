@@ -1,10 +1,7 @@
 const CACHE_NAME = 'counseling-center-v3';
 const ASSETS = [
       './',
-      './index.html',
-      './style.css',
-      './app.js',
-      './manifest.json',
+      './index.html',      './style.css',// Clean state     './app.js',      './manifest.json',
       './assets/logo.svg',
       'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Padauk:wght@400;700&display=swap',
       'https://unpkg.com/lucide@latest'const CACHE_NAME = 'counseling-center-v3';
