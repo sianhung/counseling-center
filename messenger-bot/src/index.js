@@ -1,6 +1,6 @@
 /**
  * Facebook Messenger AI Counselor - Cloudflare Worker
- * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Delivery, & Counseling Center Branding
+ * Built with Google Gemini 2.5 Flash, Multi-Key Auto-Rotation, Separate Bubble Chunking, & Counseling Center Branding
  */
 
 export default {
@@ -66,7 +66,7 @@ async function processAndRespond(senderPsid, userMessage, env) {
     const geminiResponseText = await callGeminiWithRotation(userMessage, env);
     console.log(`Gemini pure response generated for ${senderPsid}. Delivering Message #1...`);
 
-    // 2. Send Pure Counseling/Greeting Response (Message #1)
+    // 2. Send Pure Counseling/Greeting Response (Message #1 - automatically chunked if long)
     await sendMessengerMessage(senderPsid, geminiResponseText, env.PAGE_ACCESS_TOKEN);
 
     // 3. If it was a counseling discussion (not initial greeting), send Handoff Prompt in separate bubble (Message #2)
@@ -106,6 +106,7 @@ CRITICAL INSTRUCTIONS:
 4. When the user sends an initial greeting (e.g., "hi", "hello", "မင်္ဂလာပါ", "hey", "mingalarbar"), your ENTIRE reply MUST BE EXACTLY ONLY THIS:
 "မင်္ဂလာပါခင်ဗျာ Counseling Center ကနေ ကြိုဆိုပါတယ်။ ကျွန်တော်ကတော့ လူကြီးမင်းကိုကူညီပေးမယ့် AI Chat Assistant ပါ။ ဘယ်လိုအကြောင်းအရာလေးတွေ ဆွေးနွေးချင်ပါသလဲ၊ အားမနာဘဲ ရင်ဖွင့်ပြောပြလို့ ရပါတယ်။"
 5. During actual counseling discussions (when the user shares a problem, question, or counseling topic), provide compassionate biblical Christian counseling advice.
+Keep your counseling responses concise, structured, and digestible (under 350 words / 1500 characters). Avoid generating extremely long walls of text.
 DO NOT include any human counselor transfer offer or closing questions about connecting with a counselor in your generated text. The system will handle sending the transfer offer separately.`;
 
   const payload = {
@@ -144,30 +145,35 @@ DO NOT include any human counselor transfer offer or closing questions about con
 }
 
 /**
- * Send Message via Meta Graph API
+ * Send Message via Meta Graph API with Sequential Chunking for Long Texts
  */
 async function sendMessengerMessage(recipientId, textText, pageToken) {
   const url = `https://graph.facebook.com/v21.0/me/messages?access_token=${pageToken}`;
 
-  // Facebook Messenger limits single message chunks to 2000 characters
-  const truncatedText = textText.length > 1900 ? textText.substring(0, 1900) + '...' : textText;
+  // Split text into chunks of 1800 characters to respect Facebook's 2000 char limit without losing text
+  const chunkSize = 1800;
+  for (let i = 0; i < textText.length; i += chunkSize) {
+    const chunkText = textText.substring(i, i + chunkSize);
+    const payload = {
+      recipient: { id: recipientId },
+      message: { text: chunkText }
+    };
 
-  const payload = {
-    recipient: { id: recipientId },
-    message: { text: truncatedText }
-  };
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Meta Graph API Error:', errText);
+      throw new Error(`Meta Graph API Error: ${response.status} - ${errText}`);
+    } else {
+      console.log(`Message chunk delivered successfully to PSID ${recipientId}`);
+    }
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error('Meta Graph API Error:', errText);
-    throw new Error(`Meta Graph API Error: ${response.status} - ${errText}`);
-  } else {
-    console.log(`Message delivered successfully to PSID ${recipientId}`);
+    // Wait 500ms between chunks to guarantee correct sequential ordering in Messenger UI
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 }
