@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // System Prompt
   const getSystemPrompt = () => {
-    return `You are a warm, compassionate, and highly professional AI counseling assistant for "Counseling Center". 
+    return `You are a warm, compassionate, and highly professional AI counseling assistant for "Care Me". 
 You are fluent in both Myanmar (Burmese) language and English.
 
 Key Principles:
