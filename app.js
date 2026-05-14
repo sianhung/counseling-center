@@ -21,8 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSaveKey = document.getElementById('btn-save-key');
   const quickPrompts = document.querySelectorAll('.prompt-card');
 
-  // App State
-  let apiKey = localStorage.getItem('gemini_api_key') || '';
+  // App State - sanitize stored key if corrupted
+  let storedKey = localStorage.getItem('gemini_api_key') || '';
+  const keyMatch = storedKey.match(/(AIzaSy[a-zA-Z0-9_\-]{30,})/);
+  let apiKey = keyMatch ? keyMatch[1] : '';
   let chatHistory = [];
   let isDarkTheme = false;
   let preferredLang = localStorage.getItem('preferred_lang') || 'bi'; // 'bi' = bilingual, 'en' = English, 'my' = Myanmar
@@ -116,15 +118,16 @@ Key Principles:
 
   if (btnSaveKey && apiKeyInput && apiModal && apiKeyStatus) {
     btnSaveKey.addEventListener('click', () => {
-      const val = apiKeyInput.value.trim();
-      if (val) {
-        apiKey = val;
+      const rawVal = apiKeyInput.value.trim();
+      const match = rawVal.match(/(AIzaSy[a-zA-Z0-9_\-]{30,})/);
+      if (match) {
+        apiKey = match[1];
         localStorage.setItem('gemini_api_key', apiKey);
         apiKeyStatus.textContent = 'Key Active';
         apiKeyStatus.style.color = 'var(--accent-color)';
         apiModal.style.display = 'none';
       } else {
-        alert('Please enter a valid API key.');
+        alert('Please enter a valid Google Gemini API key starting with AIzaSy...');
       }
     });
   }
