@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // App State - sanitize stored key if corrupted
   let storedKey = localStorage.getItem('gemini_api_key') || '';
   const keyMatch = storedKey.match(/(AIzaSy[a-zA-Z0-9_\-]{33})/);
-  let apiKey = keyMatch ? keyMatch[1] : '';
+  let apiKey = keyMatch ? keyMatch[1] : 'AIzaSyDBIVkb8x4SWpOGmcEs6tTqMUC0GEPPYS0';
 
   let sessions = JSON.parse(localStorage.getItem('chat_sessions')) || [];
   let currentSessionId = null;
