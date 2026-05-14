@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseSettings = document.getElementById('btn-close-settings');
   const btnSettingAccount = document.getElementById('btn-setting-account');
   const btnSettingTopics = document.getElementById('btn-setting-topics');
+  const topicsSubtitle = document.getElementById('topics-subtitle');
   const btnLogout = document.getElementById('btn-logout');
   const sidebar = document.getElementById('sidebar');
   const btnMenuToggle = document.getElementById('btn-menu-toggle');
@@ -60,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let userProfile = JSON.parse(localStorage.getItem('user_profile')) || null;
   let currentStep = 0;
   let selectedInterests = [];
+  let isChoosingTopicForChat = false;
   let deferredPrompt;
 
   const interestsData = [
@@ -238,6 +240,31 @@ Key Principles:
     renderHistoryList();
   };
 
+  const startChatWithTopic = async (topicText) => {
+    if (isSending) return;
+    if (!apiKey) {
+      if (apiModal) apiModal.style.display = 'flex';
+      alert('Please configure your Gemini API key to start chatting.');
+      return;
+    }
+
+    if (onboardingFlow) onboardingFlow.style.display = 'none';
+    if (settingsMenu) settingsMenu.classList.remove('active');
+    if (sidebar) sidebar.classList.remove('active');
+
+    // Create a new chat if not already in one or if previous chat has messages
+    if (!currentSessionId || chatHistory.length > 0) {
+      createNewChat();
+    }
+
+    if (chatInput) {
+      chatInput.value = `ကျွန်တော်/ကျွန်မ "${topicText}" အကြောင်း ဆွေးနွေးလိုပါတယ်။`;
+      chatInput.style.height = 'auto';
+      if (btnSend) btnSend.disabled = false;
+      sendMessage();
+    }
+  };
+
   const initInterestGrid = () => {
     if (!interestGrid) return;
     interestGrid.innerHTML = '';
@@ -247,18 +274,22 @@ Key Principles:
     interestsData.forEach(item => {
       const tag = document.createElement('div');
       tag.className = 'interest-tag';
-      if (selectedInterests.includes(item.id)) {
+      if (!isChoosingTopicForChat && selectedInterests.includes(item.id)) {
         tag.classList.add('selected');
       }
       tag.textContent = item.label;
       tag.dataset.id = item.id;
       tag.addEventListener('click', () => {
-        tag.classList.toggle('selected');
-        const id = tag.dataset.id;
-        if (tag.classList.contains('selected')) {
-          if (!selectedInterests.includes(id)) selectedInterests.push(id);
+        if (isChoosingTopicForChat) {
+          startChatWithTopic(item.label);
         } else {
-          selectedInterests = selectedInterests.filter(i => i !== id);
+          tag.classList.toggle('selected');
+          const id = tag.dataset.id;
+          if (tag.classList.contains('selected')) {
+            if (!selectedInterests.includes(id)) selectedInterests.push(id);
+          } else {
+            selectedInterests = selectedInterests.filter(i => i !== id);
+          }
         }
       });
       interestGrid.appendChild(tag);
@@ -345,7 +376,13 @@ Key Principles:
   }
 
   if (btnStartOnboarding) {
-    btnStartOnboarding.addEventListener('click', () => showStep(1));
+    btnStartOnboarding.addEventListener('click', () => {
+      isChoosingTopicForChat = false;
+      if (topicsSubtitle) topicsSubtitle.textContent = 'သင်ပြောဆိုလိုသည့် အကြောင်းအရာများကို ရွေးချယ်ပါ';
+      if (btnFinishOnboarding) btnFinishOnboarding.style.display = 'flex';
+      initInterestGrid();
+      showStep(1);
+    });
   }
 
   if (btnPhoneNext) {
@@ -442,6 +479,10 @@ Key Principles:
 
   if (btnSettingAccount) {
     btnSettingAccount.addEventListener('click', () => {
+      isChoosingTopicForChat = false;
+      if (topicsSubtitle) topicsSubtitle.textContent = 'သင်ပြောဆိုလိုသည့် အကြောင်းအရာများကို ရွေးချယ်ပါ';
+      if (btnFinishOnboarding) btnFinishOnboarding.style.display = 'flex';
+      initInterestGrid();
       if (settingsMenu) settingsMenu.classList.remove('active');
       if (userProfile) {
         if (inputPhone) inputPhone.value = userProfile.phone || '';
@@ -461,16 +502,11 @@ Key Principles:
 
   if (btnSettingTopics) {
     btnSettingTopics.addEventListener('click', () => {
+      isChoosingTopicForChat = true;
+      if (topicsSubtitle) topicsSubtitle.textContent = 'ဆွေးနွေးလိုသည့် ခေါင်းစဉ်တစ်ခုကို နှိပ်၍ စတင်ဆွေးနွေးနိုင်ပါသည်';
+      if (btnFinishOnboarding) btnFinishOnboarding.style.display = 'none';
+      initInterestGrid();
       if (settingsMenu) settingsMenu.classList.remove('active');
-      if (userProfile) {
-        if (inputPhone) inputPhone.value = userProfile.phone || '';
-        if (inputName) inputName.value = userProfile.name || '';
-        if (inputDOB) inputDOB.value = userProfile.dob || '';
-        if (userProfile.gender) {
-          const radio = document.querySelector(`input[name="gender"][value="${userProfile.gender}"]`);
-          if (radio) radio.checked = true;
-        }
-      }
       if (onboardingFlow) {
         onboardingFlow.style.display = 'flex';
         showStep(3); // Jump to Topics step
