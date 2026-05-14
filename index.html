@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Counseling Center — AI Chat Assistant</title>
+  <meta name="description" content="Warm, empathetic bilingual (Myanmar & English) AI counseling assistant powered by Google Gemini AI.">
+  
+  <!-- PWA Manifest & iOS Meta Tags -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Counseling">
+  <link rel="apple-touch-icon" href="./assets/logo.svg">
+  <meta name="theme-color" content="#4f46e5">
+
+  <link rel="stylesheet" href="style.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <img src="assets/logo.svg" alt="Counseling Center Logo" class="brand-logo">
+      <div>
+        <h1 class="brand-title">Counseling Center</h1>
+        <p class="brand-subtitle" id="subtitle-text">Empathetic AI Support • 🇲🇲 & 🇬🇧</p>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <!-- Install App Button (Visible when installable) -->
+      <button class="btn-pill install-btn" id="btn-install" style="display: none;" aria-label="Install App">
+        <i data-lucide="download"></i>
+        <span>Install App</span>
+      </button>
+
+      <button class="btn-pill" id="btn-api-key" aria-label="API Key Settings">
+        <i data-lucide="key"></i>
+        <span id="api-key-status">Setup API Key</span>
+      </button>
+
+      <button class="btn-icon" id="btn-lang" title="Switch Language Prompting">
+        <i data-lucide="languages"></i>
+      </button>
+
+      <button class="btn-icon" id="btn-theme" title="Toggle Theme">
+        <i data-lucide="moon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+
+    <!-- Welcome / Onboarding Screen -->
+    <div class="welcome-container" id="welcome-screen">
+      <div class="welcome-badge">
+        <i data-lucide="heart-handshake"></i>
+        <span id="badge-text">Safe, Confidential & Empathetic</span>
+      </div>
+      
+      <h2 class="welcome-title" id="welcome-title">How can I support you today?</h2>
+      <p class="welcome-desc" id="welcome-desc">
+        I am here to listen and help you navigate life's challenges, feelings, and stress. You can chat freely in either Myanmar (Burmese) or English.
+      </p>
+
+      <div class="quick-prompts" id="quick-prompts">
+        <div class="prompt-card" data-prompt="I have been feeling very overwhelmed with stress lately. Can you give me some grounding tips?">
+          <div class="prompt-card-icon">🌱</div>
+          <div class="prompt-card-title">Feeling Overwhelmed</div>
+          <div class="prompt-card-desc">Tips to manage stress and stay grounded.</div>
+        </div>
+
+        <div class="prompt-card" data-prompt="မကြာသေးမီက စိတ်ဖိစီးမှုတွေ အရမ်းများနေတယ်။ စိတ်သက်သာရာရစေမယ့် နည်းလမ်းလေးတွေ အကြံပေးနိုင်မလား?">
+          <div class="prompt-card-icon">🇲🇲</div>
+          <div class="prompt-card-title">စိတ်ဖိစီးမှုများနေလျှင်</div>
+          <div class="prompt-card-desc">စိတ်သက်သာရာရစေမယ့် နည်းလမ်းများ။</div>
+        </div>
+
+        <div class="prompt-card" data-prompt="I want to improve my sleep habits and quiet my mind at night.">
+          <div class="prompt-card-icon">🌙</div>
+          <div class="prompt-card-title">Better Sleep</div>
+          <div class="prompt-card-desc">Techniques for restful nights.</div>
+        </div>
+
+        <div class="prompt-card" data-prompt="ကိုယ့်ကိုယ်ကို ယုံကြည်မှုနည်းနေသလို ခံစားနေရတယ်။ ဘယ်လို တည်ဆောက်ရမလဲ?">
+          <div class="prompt-card-icon">✨</div>
+          <div class="prompt-card-title">ယုံကြည်မှု တည်ဆောက်ရန်</div>
+          <div class="prompt-card-desc">ကိုယ့်ကိုယ်ကို ယုံကြည်မှု တိုးစေရန်။</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Stream Container -->
+    <div class="chat-container" id="chat-container">
+      <!-- Chat messages dynamically inserted here -->
+    </div>
+
+    <!-- Chat Footer / Input -->
+    <div class="chat-footer">
+      <div class="input-box">
+        <textarea id="chat-input" rows="1" placeholder="Type your message / စာရိုက်ထည့်ပါ..."></textarea>
+        <button class="btn-send" id="btn-send" disabled aria-label="Send message">
+          <i data-lucide="send"></i>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- API Key Modal -->
+  <div class="modal-overlay" id="api-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Gemini API Key</h3>
+        <button class="modal-close" id="modal-close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="api-key-input" class="form-label">Google Gemini API Key</label>
+          <input type="password" id="api-key-input" class="form-input" placeholder="AIzaSy...">
+          <div class="form-help">
+            Your API key is securely stored in your browser's local storage and only communicates directly with Google servers. Get a free key at <a href="https://ai.google.dev" target="_blank" rel="noopener">Google AI Studio</a>.
+          </div>
+        </div>
+        <button class="btn-primary" id="btn-save-key">Save Key & Start Chatting</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
