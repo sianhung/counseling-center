@@ -319,7 +319,7 @@ Key Principles:
     const typingIndicator = appendTypingIndicator();
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
       
       const payload = {
         systemInstruction: {
@@ -348,7 +348,7 @@ Key Principles:
       const botBubble = appendMessage('bot', '', true);
       let fullResponseText = '';
 
-      // Parse stream
+      // Parse SSE stream
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -359,28 +359,48 @@ Key Principles:
 
         buffer += decoder.decode(value, { stream: true });
         
-        // Split into json objects
-        const parts = buffer.split('\n,\n');
+        // Split into SSE messages
+        const messages = buffer.split('\n\n');
         
-        // Process complete json chunks
-        for (let i = 0; i < parts.length; i++) {
-          let chunkStr = parts[i].trim();
-          if (chunkStr.startsWith('[')) chunkStr = chunkStr.slice(1);
-          if (chunkStr.endsWith(']')) chunkStr = chunkStr.slice(0, -1);
-          if (!chunkStr) continue;
+        // Process complete messages
+        for (let i = 0; i < messages.length - 1; i++) {
+          const message = messages[i].trim();
+          if (!message.startsWith('data: ')) continue;
+          
+          const jsonStr = message.substring(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
 
           try {
-            const json = JSON.parse(chunkStr);
+            const json = JSON.parse(jsonStr);
             const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
             if (candidateText) {
               fullResponseText += candidateText;
               botBubble.innerHTML = formatTextToHTML(fullResponseText);
               if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
             }
-            if (i === parts.length - 1) buffer = '';
           } catch (e) {
-            if (i === parts.length - 1) buffer = chunkStr;
+            console.error('Failed to parse chunk:', e, jsonStr);
           }
+        }
+        // Keep the last incomplete message in the buffer
+        buffer = messages[messages.length - 1];
+      }
+
+      // Handle any remaining data in the buffer when the stream is done
+      if (buffer.trim().startsWith('data: ')) {
+        const jsonStr = buffer.trim().substring(6).trim();
+        try {
+          if (jsonStr && jsonStr !== '[DONE]') {
+            const json = JSON.parse(jsonStr);
+            const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (candidateText) {
+              fullResponseText += candidateText;
+              botBubble.innerHTML = formatTextToHTML(fullResponseText);
+              if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+          }
+        } catch (e) {
+          // ignore
         }
       }
 
