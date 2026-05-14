@@ -104,19 +104,17 @@ export default {
       try {
         const data = await request.json();
 
-        // Check if event is from Page subscription
         if (data.object === 'page') {
           for (const entry of data.entry) {
             const webhookEvent = entry.messaging[0];
             const senderPsid = webhookEvent.sender.id;
 
-            // Ignore messages sent by the bot itself or delivery receipts
             if (webhookEvent.message && !webhookEvent.message.is_echo) {
               const userMessage = webhookEvent.message.text || '';
               console.log(`Received message from PSID ${senderPsid}: "${userMessage}"`);
 
-              // Process AI response asynchronously
-              ctx.waitUntil(processAndRespond(senderPsid, userMessage, env));
+              // Await processAndRespond synchronously to ensure Cloudflare doesn't kill background logging
+              await processAndRespond(senderPsid, userMessage, env);
             }
           }
           return new Response('EVENT_RECEIVED', { status: 200 });
@@ -133,21 +131,19 @@ export default {
 };
 
 /**
- * Main AI Counseling Logic, Human Counselor Handoff, & KV Logging
+ * Main AI Counseling Logic, Human Counselor Handoff, & Synchronous KV Logging
  */
 async function processAndRespond(senderPsid, userMessage, env) {
   const cleanMsg = userMessage.trim().toLowerCase();
 
-  // Allow user to resume AI chat anytime by saying 'reset', 'restart', 'bot', 'ai', or 'စတင်ပါ'
   if (cleanMsg === 'reset' || cleanMsg === 'restart' || cleanMsg === 'bot' || cleanMsg === 'ai' || cleanMsg === 'စတင်ပါ') {
     pausedUsers.delete(senderPsid);
     const replyText = "AI Chat Assistant ကို ပြန်လည်စတင်လိုက်ပါပြီ။ ဘာများကူညီပေးရမလဲခင်ဗျာ?";
-    await sendMessengerMessage(senderPsid, replyText, env.PAGE_ACCESS_TOKEN);
     await logConversation(senderPsid, userMessage, replyText, env);
+    await sendMessengerMessage(senderPsid, replyText, env.PAGE_ACCESS_TOKEN);
     return;
   }
 
-  // If user is handed off to human counselor, ignore all messages so human counselor can converse
   if (pausedUsers.has(senderPsid)) {
     console.log(`PSID ${senderPsid} is in HANDOFF state. Ignoring message so human counselor can converse.`);
     await logConversation(senderPsid, userMessage, "[PAUSED - Human Counselor Handoff State]", env);
@@ -155,28 +151,26 @@ async function processAndRespond(senderPsid, userMessage, env) {
   }
 
   try {
-    // 1. Call Gemini API with Auto-Rotation
     const geminiResponseText = await callGeminiWithRotation(userMessage, env);
 
-    // 2. Check if Gemini triggered Handoff Activation
     if (geminiResponseText.startsWith('[HANDOFF_ACTIVATED]')) {
       const replyText = geminiResponseText.replace('[HANDOFF_ACTIVATED]', '').trim();
       console.log(`Handoff activated for ${senderPsid}. Pausing bot...`);
       pausedUsers.add(senderPsid);
-      await sendMessengerMessage(senderPsid, replyText, env.PAGE_ACCESS_TOKEN);
       await logConversation(senderPsid, userMessage, replyText, env);
+      await sendMessengerMessage(senderPsid, replyText, env.PAGE_ACCESS_TOKEN);
       return;
     }
 
-    console.log(`Gemini pure response generated for ${senderPsid}. Delivering Message #1...`);
+    console.log(`Gemini response generated for ${senderPsid}. Logging to KV instantly before delivering...`);
 
-    // 3. Send Pure Counseling/Greeting Response (Message #1 - automatically chunked if long)
-    await sendMessengerMessage(senderPsid, geminiResponseText, env.PAGE_ACCESS_TOKEN);
-
-    // 4. Log conversation to KV
+    // Log instantly before slow network chunking delivery
     await logConversation(senderPsid, userMessage, geminiResponseText, env);
 
-    // 5. If it was a counseling discussion (not initial greeting), send Handoff Prompt in separate bubble (Message #2)
+    // Deliver Message #1
+    await sendMessengerMessage(senderPsid, geminiResponseText, env.PAGE_ACCESS_TOKEN);
+
+    // Deliver Message #2 (Handoff Prompt) if applicable
     const isGreeting = geminiResponseText.includes('Counseling Center ကနေ ကြိုဆိုပါတယ်။');
     if (!isGreeting) {
       console.log(`Delivering separate counselor handoff prompt (Message #2) to ${senderPsid}...`);
@@ -186,8 +180,8 @@ async function processAndRespond(senderPsid, userMessage, env) {
   } catch (error) {
     console.error('Error during processing:', error);
     const errText = 'ခေတ္တစောင့်ဆိုင်းပေးပါ။ စနစ်ချို့ယွင်းမှုတစ်ခုဖြစ်ပေါ်နေသဖြင့် ပြန်လည်ကြိုးစားပေးပါခင်ဗျာ။';
-    await sendMessengerMessage(senderPsid, errText, env.PAGE_ACCESS_TOKEN);
     await logConversation(senderPsid, userMessage, `[ERROR] ${error.message}`, env);
+    await sendMessengerMessage(senderPsid, errText, env.PAGE_ACCESS_TOKEN);
   }
 }
 
@@ -195,7 +189,10 @@ async function processAndRespond(senderPsid, userMessage, env) {
  * Log conversation thread into Cloudflare KV Storage
  */
 async function logConversation(psid, userMsg, aiReply, env) {
-  if (!env.CHAT_LOGS) return;
+  if (!env.CHAT_LOGS) {
+    console.warn('env.CHAT_LOGS binding is missing!');
+    return;
+  }
   try {
     const key = `psid_${psid}`;
     const existing = (await env.CHAT_LOGS.get(key, { type: 'json' })) || [];
@@ -204,17 +201,16 @@ async function logConversation(psid, userMsg, aiReply, env) {
       user_message: userMsg,
       ai_response: aiReply
     });
-    // Keep last 50 messages per user to avoid exceeding KV size limits
     if (existing.length > 50) existing.shift();
     await env.CHAT_LOGS.put(key, JSON.stringify(existing));
 
-    // Also maintain index list of all active PSIDs
     const indexKey = 'all_active_psids';
     const psids = (await env.CHAT_LOGS.get(indexKey, { type: 'json' })) || [];
     if (!psids.includes(psid)) {
       psids.push(psid);
       await env.CHAT_LOGS.put(indexKey, JSON.stringify(psids));
     }
+    console.log(`Successfully logged chat for PSID ${psid} into KV storage.`);
   } catch (e) {
     console.error('Failed to log conversation to KV:', e);
   }
@@ -287,7 +283,6 @@ DO NOT include any human counselor transfer offer or closing questions about con
 async function sendMessengerMessage(recipientId, textText, pageToken) {
   const url = `https://graph.facebook.com/v21.0/me/messages?access_token=${pageToken}`;
 
-  // Split text into chunks of 1800 characters to respect Facebook's 2000 char limit without losing text
   const chunkSize = 1800;
   for (let i = 0; i < textText.length; i += chunkSize) {
     const chunkText = textText.substring(i, i + chunkSize);
@@ -310,7 +305,6 @@ async function sendMessengerMessage(recipientId, textText, pageToken) {
       console.log(`Message chunk delivered successfully to PSID ${recipientId}`);
     }
 
-    // Wait 500ms between chunks to guarantee correct sequential ordering in Messenger UI
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 }
