@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Counseling Center</string>
+    <string name="title_activity_main">Counseling Center</string>
+    <string name="package_name">com.careme.counseling</string>
+    <string name="custom_url_scheme">com.careme.counseling</string>
+</resources>
