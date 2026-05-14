@@ -1,4 +1,4 @@
-const CACHE_NAME = 'care-me-v7';
+const CACHE_NAME = 'care-me-v8';
 const ASSETS = [
   './',
   './index.html',
