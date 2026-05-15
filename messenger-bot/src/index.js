@@ -227,35 +227,32 @@ async function renderDashboard(request, env) {
         }
         .wf-canvas {
           width: 1100px;
-          height: 100%;
-          min-height: 600px;
+          height: 700px;
           position: relative;
           margin: 0 auto;
-          display: flex;
-          align-items: center;
-          padding: 40px;
+          display: block;
+          padding: 0;
         }
 
-        /* SVG Sequential Drawing Animation */
         .wf-svg-layer {
           position: absolute;
           inset: 0;
           pointer-events: none;
           z-index: 1;
+          width: 100%;
+          height: 100%;
         }
         .wf-line {
           fill: none;
-          stroke: rgba(99, 102, 241, 0.5);
-          stroke-width: 2.5;
-          stroke-dasharray: 1000;
-          stroke-dashoffset: 1000;
-          animation: draw 1.5s ease-out forwards;
+          stroke: #818cf8;
+          stroke-width: 3;
+          stroke-dasharray: 2000;
+          stroke-dashoffset: 2000;
+          animation: drawLine 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
           marker-end: url(#arrowhead);
+          filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
         }
-        @keyframes draw { to { stroke-dashoffset: 0; } }
-
-        .wf-line.dashed { stroke: rgba(148, 163, 184, 0.3); stroke-dasharray: 5,5; stroke-dashoffset: 0; animation: fadein 1s forwards; marker-end: none; }
-        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes drawLine { to { stroke-dashoffset: 0; } }
 
         .node {
           background: #1e293b;
@@ -265,7 +262,7 @@ async function renderDashboard(request, env) {
           width: 190px;
           position: absolute;
           z-index: 2;
-          box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+          box-shadow: 0 10px 25px rgba(0,0,0,0.5);
           animation: nodePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
           opacity: 0;
         }
@@ -273,121 +270,108 @@ async function renderDashboard(request, env) {
         
         .step-badge {
           position: absolute;
-          top: -12px;
-          left: -12px;
+          top: -10px;
+          left: -10px;
           background: #6366f1;
           color: white;
-          font-size: 0.6rem;
+          font-size: 0.65rem;
           font-weight: 800;
-          padding: 2px 8px;
+          padding: 3px 10px;
           border-radius: 20px;
           z-index: 10;
-          box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4);
         }
 
         .node-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .node-icon { width: 32px; height: 32px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
-        .node-title { font-weight: 700; font-size: 0.8rem; color: white; }
-        .node-body { font-size: 0.65rem; color: #94a3b8; line-height: 1.3; }
+        .node-title { font-weight: 700; font-size: 0.85rem; color: white; }
+        .node-body { font-size: 0.65rem; color: #94a3b8; line-height: 1.4; }
         
-        .port { width: 8px; height: 8px; background: #0f172a; border: 2px solid #6366f1; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); }
-        .port.in { left: -5px; }
-        .port.out { right: -5px; }
+        .port { width: 10px; height: 10px; background: #0f172a; border: 2.5px solid #6366f1; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); z-index: 5; }
+        .port.in { left: -6px; }
+        .port.out { right: -6px; }
 
         .sub-node-wrap { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 8px; }
         .floating-node {
           width: 44px;
           height: 44px;
-          background: #0f172a;
+          background: #1e293b;
           border: 1px solid rgba(255,255,255,0.1);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 1rem;
+          font-size: 1.2rem;
         }
         .float-label { font-size: 0.55rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-top: 3px; }
       </style>
 
       <div class="wf-container">
-        <svg class="wf-svg-layer">
-          <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill="rgba(99, 102, 241, 0.8)" />
-            </marker>
-          </defs>
-          
-          <!-- Sequential Drawing Paths -->
-          <path class="wf-line" style="animation-delay: 0.5s;" d="M 240 300 L 290 300" />
-          <path class="wf-line" style="animation-delay: 2s;" d="M 490 300 C 530 300 540 200 570 160" />
-          <path class="wf-line" style="animation-delay: 2s;" d="M 490 300 C 530 300 540 400 570 440" />
-          <path class="wf-line" style="animation-delay: 3.5s;" d="M 770 160 C 810 160 820 300 850 300" />
-          <path class="wf-line" style="animation-delay: 3.5s;" d="M 770 440 C 810 440 820 300 850 300" />
-          
-          <!-- Static Dashed Lines -->
-          <path class="wf-line dashed" style="animation-delay: 1.5s;" d="M 395 342 L 395 400" />
-          <path class="wf-line dashed" style="animation-delay: 3s;" d="M 675 198 L 675 250" />
-        </svg>
-
         <div class="wf-canvas">
-          <!-- STEP 1 -->
+          <svg class="wf-svg-layer">
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#818cf8" />
+              </marker>
+            </defs>
+            <!-- Pixel Perfect Paths (Y=300 for middle nodes) -->
+            <path class="wf-line" style="animation-delay: 0.5s;" d="M 240 300 L 300 300" />
+            <path class="wf-line" style="animation-delay: 2s;" d="M 490 300 C 530 300 540 160 580 160" />
+            <path class="wf-line" style="animation-delay: 2s;" d="M 490 300 C 530 300 540 440 580 440" />
+            <path class="wf-line" style="animation-delay: 3.5s;" d="M 770 160 C 810 160 820 300 860 300" />
+            <path class="wf-line" style="animation-delay: 3.5s;" d="M 770 440 C 810 440 820 300 860 300" />
+          </svg>
+
+          <!-- NODES -->
           <div class="node" style="left: 50px; top: 250px; animation-delay: 0s;">
             <div class="step-badge">STEP 1</div>
-            <div class="node-header"><div class="node-icon">💬</div><div class="node-title">Message Received</div></div>
-            <div class="node-body">Webhook trigger from Meta.</div>
+            <div class="node-header"><div class="node-icon">💬</div><div class="node-title">Messenger</div></div>
+            <div class="node-body">Incoming message trigger.</div>
             <div class="port out"></div>
           </div>
 
-          <!-- STEP 2 -->
           <div class="node" style="left: 300px; top: 250px; animation-delay: 1.2s;">
             <div class="step-badge">STEP 2</div>
-            <div class="node-header"><div class="node-icon">🔀</div><div class="node-title">Send Router</div></div>
-            <div class="node-body">Processing logic & security.</div>
+            <div class="node-header"><div class="node-icon">🔀</div><div class="node-title">Router</div></div>
+            <div class="node-body">Logic & Security path.</div>
             <div class="port in"></div>
             <div class="port out"></div>
             <div class="sub-node-wrap" style="bottom: -110px; left: 50%; transform: translateX(-50%);">
               <div class="floating-node">🛡️</div>
-              <div class="float-label">Security Check</div>
+              <div class="float-label">Security</div>
             </div>
           </div>
 
-          <!-- STEP 3 -->
           <div class="node" style="left: 580px; top: 110px; animation-delay: 2.7s;">
             <div class="step-badge">STEP 3</div>
             <div class="node-header">
-              <div class="node-icon"><img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" style="width: 20px;"></div>
+              <div class="node-icon"><img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" style="width: 22px;"></div>
               <div class="node-title">AI Core</div>
             </div>
             <div class="node-body">Gemini 2.0 reasoning.</div>
             <div class="port in"></div>
             <div class="port out"></div>
-            <div class="sub-node-wrap" style="bottom: -110px; left: 50%; transform: translateX(-50%);">
-              <div class="floating-node">✨</div>
-              <div class="float-label">Reasoning</div>
-            </div>
           </div>
 
-          <!-- STEP 3 (Parallel) -->
           <div class="node" style="left: 580px; top: 390px; animation-delay: 2.7s;">
             <div class="node-header">
-              <div class="node-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" style="width: 20px;"></div>
-              <div class="node-title">History Store</div>
+              <div class="node-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" style="width: 22px;"></div>
+              <div class="node-title">Storage</div>
             </div>
             <div class="node-body">Worker KV persistence.</div>
             <div class="port in"></div>
             <div class="port out"></div>
           </div>
 
-          <!-- STEP 4 -->
           <div class="node" style="left: 860px; top: 250px; animation-delay: 4.2s;">
             <div class="step-badge">STEP 4</div>
-            <div class="node-header"><div class="node-icon">🚀</div><div class="node-title">Send Response</div></div>
-            <div class="node-body">Final delivery to user.</div>
+            <div class="node-header"><div class="node-icon">🚀</div><div class="node-title">Response</div></div>
+            <div class="node-body">Message delivery.</div>
             <div class="port in"></div>
           </div>
         </div>
       </div>
     ` : ''}
+
 
 
 
