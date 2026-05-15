@@ -653,7 +653,7 @@ async function handleMessage(sender_psid, messageText, env) {
 
   // Dual-Model Resilient Strategy (2.0 Priority, 1.5 Safety)
   const apiKeys = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy'));
-  const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash'];
+  const models = ['gemini-2.0-flash-exp', 'gemini-1.5-pro'];
   let finalData = null;
   let lastErrorDetails = null;
 
@@ -662,7 +662,8 @@ async function handleMessage(sender_psid, messageText, env) {
 
     for (const model of models) {
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+        const apiVersion = model.includes('2.0') ? 'v1beta' : 'v1';
+        const response = await fetch(`https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents, safetySettings })
