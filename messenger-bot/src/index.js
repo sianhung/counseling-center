@@ -558,12 +558,25 @@ async function handleMessage(sender_psid, messageText, env) {
   const systemInstruction = await env.CHAT_LOGS.get('settings_system_instruction') || 
     'You are a professional Christian AI Chat Assistant for "Counseling Center", speaking fluently in Myanmar (Burmese) language with deep empathy, active listening, and biblical wisdom.';
 
-  // Get chat history
+  // Get chat history and profile for gender detection
+  const profile = (await env.CHAT_LOGS.get(`profile_${sender_psid}`, { type: 'json' })) || { name: `User ${sender_psid}`, pic: '', gender: 'unknown' };
   let history = (await env.CHAT_LOGS.get(`psid_${sender_psid}`, { type: 'json' })) || [];
   
-  // Prepare contents for Gemini
+  // Detect Myanmar Gender Particle
+  let particle = "ရှင့်"; // Default to Female as it's common in counseling
+  const name = profile.name.toLowerCase();
+  const maleMarkers = ['u ', 'ko ', 'maung ', 'saw ', 'sai ', 'min '];
+  const femaleMarkers = ['daw ', 'ma ', 'naw ', 'nan ', 'eichen '];
+  
+  if (profile.gender === 'male' || maleMarkers.some(m => name.startsWith(m))) {
+    particle = "ခင်ဗျာ";
+  } else if (profile.gender === 'female' || femaleMarkers.some(m => name.startsWith(m))) {
+    particle = "ရှင့်";
+  }
+
+  // Prepare contents for Gemini with strict gender instruction
   const contents = [
-    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}` }] },
+    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. You MUST consistently use the polite particle "${particle}" throughout your response. Never mix it with other gender terms.` }] },
     ...history.slice(-10).flatMap(log => [
       { role: 'user', parts: [{ text: log.user_message }] },
       { role: 'model', parts: [{ text: log.ai_response }] }
@@ -619,9 +632,9 @@ async function handleMessage(sender_psid, messageText, env) {
     }));
     
     if (lastErrorDetails?.candidates?.[0]?.finishReason === 'SAFETY') {
-      aiText = "ကျမတို့ Counseling Center မှ အမြဲအသင့်ရှိနေပါတယ်။ အခုပြောတဲ့အကြောင်းအရာက အရမ်းလေးနက်တဲ့အတွက်ကြောင့် စိတ်အေးအေးထားပြီး ခဏစောင့်ပေးပါနော်။ ကျမတို့ လူကိုယ်တိုင် ပြန်လည်ဖြေကြားပေးပါမယ်။";
+      aiText = `ကျမတို့ Counseling Center မှ အမြဲအသင့်ရှိနေပါတယ်။ အခုပြောတဲ့အကြောင်းအရာက အရမ်းလေးနက်တဲ့အတွက်ကြောင့် စိတ်အေးအေးထားပြီး ခဏစောင့်ပေးပါ${particle}။ ကျမတို့ လူကိုယ်တိုင် ပြန်လည်ဖြေကြားပေးပါမယ်။`;
     } else {
-      aiText = "တောင်းပန်ပါတယ်ရှင့်။ အခုအချိန်မှာ စနစ်ပိုင်းဆိုင်ရာ အခက်အခဲလေးရှိနေလို့ ခဏနေမှ ပြန်ပြောပေးပါမယ်နော်။";
+      aiText = `တောင်းပန်ပါတယ်${particle}။ အခုအချိန်မှာ စနစ်ပိုင်းဆိုင်ရာ အခက်အခဲလေးရှိနေလို့ ခဏနေမှ ပြန်ပြောပေးပါမယ်နော်။`;
     }
   }
 
@@ -646,7 +659,7 @@ async function getFacebookProfile(psid, env, force = false) {
 
   console.log(`[ProfileSync] Attempting fetch for PSID: ${psid}`);
   try {
-    const fbUrl = `https://graph.facebook.com/${psid}?fields=first_name,last_name,profile_pic&access_token=${env.PAGE_ACCESS_TOKEN}`;
+    const fbUrl = `https://graph.facebook.com/${psid}?fields=first_name,last_name,profile_pic,gender&access_token=${env.PAGE_ACCESS_TOKEN}`;
     const response = await fetch(fbUrl);
     const data = await response.json();
     
@@ -661,7 +674,8 @@ async function getFacebookProfile(psid, env, force = false) {
 
     const profile = {
       name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || `User ${psid}`,
-      pic: data.profile_pic || ''
+      pic: data.profile_pic || '',
+      gender: data.gender || 'unknown'
     };
     
     if (profile.name !== `User ${psid}`) {
