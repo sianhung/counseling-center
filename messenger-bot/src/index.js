@@ -215,23 +215,50 @@ async function renderDashboard(request, env) {
 
     ${activeTab === 'workflow' ? `
       <style>
-        .content { padding: 0 !important; overflow: hidden !important; display: flex; flex-direction: column; }
-        .wf-container { 
+        .content { padding: 0 !important; overflow: hidden !important; display: flex; flex-direction: column; height: 100vh; }
+        .wf-split-layout { display: flex; flex: 1; overflow: hidden; background: #0f172a; }
+        
+        /* Left Sidebar: System Blocks */
+        .wf-side-panel {
+          width: 280px;
+          border-right: 1px solid rgba(255,255,255,0.05);
+          padding: 1.5rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          background: #0f172a;
+          z-index: 10;
+        }
+        .wf-side-panel h3 { font-size: 0.9rem; font-weight: 800; color: #64748b; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 1rem; }
+        .block-item { 
+          display: flex; 
+          align-items: center; 
+          gap: 12px; 
+          padding: 12px; 
+          background: rgba(255,255,255,0.03); 
+          border: 1px solid rgba(255,255,255,0.05);
+          border-radius: 12px;
+          transition: 0.3s;
+        }
+        .block-item:hover { background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); }
+        .block-status { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
+        .block-info span { display: block; font-weight: 700; font-size: 0.8rem; color: white; }
+        .block-info small { color: #64748b; font-size: 0.65rem; }
+
+        /* Right Panel: Infinite Canvas */
+        .wf-main { 
           flex: 1; 
-          background: #0f172a; 
           position: relative; 
           overflow: auto; 
-          background-image: 
-            radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+          background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
           background-size: 24px 24px;
         }
         .wf-canvas {
-          width: 1100px;
-          height: 700px;
+          width: 1200px;
+          height: 800px;
           position: relative;
-          margin: 0 auto;
-          display: block;
-          padding: 0;
+          margin: 0;
+          padding: 60px;
         }
 
         .wf-svg-layer {
@@ -259,7 +286,7 @@ async function renderDashboard(request, env) {
           border: 1px solid rgba(255,255,255,0.1);
           border-radius: 12px;
           padding: 1rem;
-          width: 190px;
+          width: 180px;
           position: absolute;
           z-index: 2;
           box-shadow: 0 10px 25px rgba(0,0,0,0.5);
@@ -274,103 +301,123 @@ async function renderDashboard(request, env) {
           left: -10px;
           background: #6366f1;
           color: white;
-          font-size: 0.65rem;
+          font-size: 0.6rem;
           font-weight: 800;
-          padding: 3px 10px;
+          padding: 2px 8px;
           border-radius: 20px;
           z-index: 10;
         }
 
         .node-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .node-icon { width: 32px; height: 32px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
-        .node-title { font-weight: 700; font-size: 0.85rem; color: white; }
-        .node-body { font-size: 0.65rem; color: #94a3b8; line-height: 1.4; }
+        .node-title { font-weight: 700; font-size: 0.8rem; color: white; }
+        .node-body { font-size: 0.6rem; color: #94a3b8; line-height: 1.4; }
         
         .port { width: 10px; height: 10px; background: #0f172a; border: 2.5px solid #6366f1; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); z-index: 5; }
         .port.in { left: -6px; }
         .port.out { right: -6px; }
-
-        .sub-node-wrap { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-        .floating-node {
-          width: 44px;
-          height: 44px;
-          background: #1e293b;
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.2rem;
-        }
-        .float-label { font-size: 0.55rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-top: 3px; }
       </style>
 
-      <div class="wf-container">
-        <div class="wf-canvas">
-          <svg class="wf-svg-layer">
-            <defs>
-              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                <polygon points="0 0, 10 3.5, 0 7" fill="#818cf8" />
-              </marker>
-            </defs>
-            <!-- Pixel Perfect Paths (Y=300 for middle nodes) -->
-            <path class="wf-line" style="animation-delay: 0.5s;" d="M 240 300 L 300 300" />
-            <path class="wf-line" style="animation-delay: 2s;" d="M 490 300 C 530 300 540 160 580 160" />
-            <path class="wf-line" style="animation-delay: 2s;" d="M 490 300 C 530 300 540 440 580 440" />
-            <path class="wf-line" style="animation-delay: 3.5s;" d="M 770 160 C 810 160 820 300 860 300" />
-            <path class="wf-line" style="animation-delay: 3.5s;" d="M 770 440 C 810 440 820 300 860 300" />
-          </svg>
-
-          <!-- NODES -->
-          <div class="node" style="left: 50px; top: 250px; animation-delay: 0s;">
-            <div class="step-badge">STEP 1</div>
-            <div class="node-header"><div class="node-icon">💬</div><div class="node-title">Messenger</div></div>
-            <div class="node-body">Incoming message trigger.</div>
-            <div class="port out"></div>
+      <div class="wf-split-layout">
+        <!-- Sidebar -->
+        <div class="wf-side-panel">
+          <h3>System Blocks</h3>
+          <div class="block-item">
+            <div class="block-status"></div>
+            <div class="block-info"><span>Webhook Trigger</span><small>Status: Listening</small></div>
           </div>
+          <div class="block-item">
+            <div class="block-status"></div>
+            <div class="block-info"><span>Query Router</span><small>Status: Active</small></div>
+          </div>
+          <div class="block-item">
+            <div class="block-status"></div>
+            <div class="block-info"><span>Security Guard</span><small>Status: Filtering</small></div>
+          </div>
+          <div class="block-item">
+            <div class="block-status"></div>
+            <div class="block-info"><span>Gemini AI Core</span><small>Status: Ready</small></div>
+          </div>
+          <div class="block-item" style="opacity: 0.5;">
+            <div class="block-status" style="background: #94a3b8; box-shadow: none;"></div>
+            <div class="block-info"><span>Analytics Engine</span><small>Status: Offline</small></div>
+          </div>
+        </div>
 
-          <div class="node" style="left: 300px; top: 250px; animation-delay: 1.2s;">
-            <div class="step-badge">STEP 2</div>
-            <div class="node-header"><div class="node-icon">🔀</div><div class="node-title">Router</div></div>
-            <div class="node-body">Logic & Security path.</div>
-            <div class="port in"></div>
-            <div class="port out"></div>
-            <div class="sub-node-wrap" style="bottom: -110px; left: 50%; transform: translateX(-50%);">
-              <div class="floating-node">🛡️</div>
-              <div class="float-label">Security</div>
+        <!-- Main Canvas -->
+        <div class="wf-main">
+          <div class="wf-canvas">
+            <svg class="wf-svg-layer">
+              <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                  <polygon points="0 0, 10 3.5, 0 7" fill="#818cf8" />
+                </marker>
+              </defs>
+              <!-- 5-Step Logic Chain -->
+              <path class="wf-line" style="animation-delay: 0.5s;" d="M 220 300 L 260 300" /> <!-- Trigger -> Router -->
+              <path class="wf-line" style="animation-delay: 1.5s;" d="M 440 300 L 480 300" /> <!-- Router -> Security -->
+              <path class="wf-line" style="animation-delay: 2.5s;" d="M 660 300 C 690 300 700 160 740 160" /> <!-- Security -> AI -->
+              <path class="wf-line" style="animation-delay: 2.5s;" d="M 660 300 C 690 300 700 440 740 440" /> <!-- Security -> Storage -->
+              <path class="wf-line" style="animation-delay: 4.0s;" d="M 920 160 C 950 160 960 300 1000 300" /> <!-- AI -> Response -->
+              <path class="wf-line" style="animation-delay: 4.0s;" d="M 920 440 C 950 440 960 300 1000 300" /> <!-- Storage -> Response -->
+            </svg>
+
+            <!-- NODES (X: 40, 260, 480, 740, 1000) -->
+            <div class="node" style="left: 40px; top: 250px; animation-delay: 0s;">
+              <div class="step-badge">STEP 1</div>
+              <div class="node-header"><div class="node-icon">💬</div><div class="node-title">Messenger</div></div>
+              <div class="node-body">Incoming message trigger.</div>
+              <div class="port out"></div>
             </div>
-          </div>
 
-          <div class="node" style="left: 580px; top: 110px; animation-delay: 2.7s;">
-            <div class="step-badge">STEP 3</div>
-            <div class="node-header">
-              <div class="node-icon"><img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" style="width: 22px;"></div>
-              <div class="node-title">AI Core</div>
+            <div class="node" style="left: 260px; top: 250px; animation-delay: 1s;">
+              <div class="step-badge">STEP 2</div>
+              <div class="node-header"><div class="node-icon">🔀</div><div class="node-title">Router</div></div>
+              <div class="node-body">Logic & Intent path.</div>
+              <div class="port in"></div>
+              <div class="port out"></div>
             </div>
-            <div class="node-body">Gemini 2.0 reasoning.</div>
-            <div class="port in"></div>
-            <div class="port out"></div>
-          </div>
 
-          <div class="node" style="left: 580px; top: 390px; animation-delay: 2.7s;">
-            <div class="node-header">
-              <div class="node-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" style="width: 22px;"></div>
-              <div class="node-title">Storage</div>
+            <div class="node" style="left: 480px; top: 250px; animation-delay: 2s; border-color: rgba(16, 185, 129, 0.4);">
+              <div class="step-badge" style="background: #10b981;">SECURE</div>
+              <div class="node-header"><div class="node-icon">🛡️</div><div class="node-title">Security Guard</div></div>
+              <div class="node-body">Content filtering & safety.</div>
+              <div class="port in"></div>
+              <div class="port out"></div>
             </div>
-            <div class="node-body">Worker KV persistence.</div>
-            <div class="port in"></div>
-            <div class="port out"></div>
-          </div>
 
-          <div class="node" style="left: 860px; top: 250px; animation-delay: 4.2s;">
-            <div class="step-badge">STEP 4</div>
-            <div class="node-header"><div class="node-icon">🚀</div><div class="node-title">Response</div></div>
-            <div class="node-body">Message delivery.</div>
-            <div class="port in"></div>
+            <div class="node" style="left: 740px; top: 110px; animation-delay: 3s;">
+              <div class="step-badge">STEP 3</div>
+              <div class="node-header">
+                <div class="node-icon"><img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" style="width: 20px;"></div>
+                <div class="node-title">AI Core</div>
+              </div>
+              <div class="node-body">Gemini 2.0 reasoning.</div>
+              <div class="port in"></div>
+              <div class="port out"></div>
+            </div>
+
+            <div class="node" style="left: 740px; top: 390px; animation-delay: 3s;">
+              <div class="node-header">
+                <div class="node-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" style="width: 20px;"></div>
+                <div class="node-title">Storage</div>
+              </div>
+              <div class="node-body">Worker KV memory.</div>
+              <div class="port in"></div>
+              <div class="port out"></div>
+            </div>
+
+            <div class="node" style="left: 1000px; top: 250px; animation-delay: 4.5s;">
+              <div class="step-badge">STEP 4</div>
+              <div class="node-header"><div class="node-icon">🚀</div><div class="node-title">Response</div></div>
+              <div class="node-body">Message delivery.</div>
+              <div class="port in"></div>
+            </div>
           </div>
         </div>
       </div>
     ` : ''}
+
 
 
 
