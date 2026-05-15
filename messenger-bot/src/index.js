@@ -220,21 +220,20 @@ async function renderDashboard(request, env) {
           flex: 1; 
           background: #0f172a; 
           position: relative; 
-          overflow: hidden; 
+          overflow: auto; 
           background-image: 
-            radial-gradient(circle at 2px 2px, rgba(255,255,255,0.03) 1px, transparent 0);
-          background-size: 32px 32px;
-          cursor: grab;
+            radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+          background-size: 24px 24px;
         }
         .wf-canvas {
-          width: 100%;
+          width: 1100px;
           height: 100%;
+          min-height: 600px;
           position: relative;
+          margin: 0 auto;
           display: flex;
           align-items: center;
-          justify-content: center;
-          padding: 100px;
-          min-width: 1400px;
+          padding: 40px;
         }
 
         /* SVG Layer for Curved Lines */
@@ -247,177 +246,138 @@ async function renderDashboard(request, env) {
         .wf-line {
           fill: none;
           stroke: rgba(99, 102, 241, 0.4);
-          stroke-width: 2.5;
-          stroke-dasharray: 8;
-          animation: dash 30s linear infinite;
+          stroke-width: 2;
+          stroke-dasharray: 6;
+          animation: dash 25s linear infinite;
         }
         @keyframes dash { to { stroke-dashoffset: -1000; } }
 
         .node {
           background: #1e293b;
           border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 16px;
-          padding: 1.25rem;
-          width: 240px;
-          position: relative;
+          border-radius: 12px;
+          padding: 1rem;
+          width: 190px;
+          position: absolute;
           z-index: 2;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-          transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+          transition: 0.3s;
         }
-        .node:hover { transform: translateY(-5px); border-color: #6366f1; box-shadow: 0 0 30px rgba(99, 102, 241, 0.2); }
+        .node:hover { transform: translateY(-3px); border-color: #6366f1; }
         
-        .node-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-        .node-icon { width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-        .node-title { font-weight: 700; font-size: 0.9rem; color: white; letter-spacing: 0.5px; }
+        .node-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .node-icon { width: 32px; height: 32px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .node-title { font-weight: 700; font-size: 0.8rem; color: white; letter-spacing: 0.3px; }
         
-        .node-body { font-size: 0.75rem; color: #94a3b8; line-height: 1.4; }
+        .node-body { font-size: 0.65rem; color: #94a3b8; line-height: 1.3; }
         
-        /* Node Ports */
-        .port { width: 10px; height: 10px; background: #0f172a; border: 2px solid #6366f1; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); }
-        .port.in { left: -6px; }
-        .port.out { right: -6px; }
+        .port { width: 8px; height: 8px; background: #0f172a; border: 2px solid #6366f1; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); }
+        .port.in { left: -5px; }
+        .port.out { right: -5px; }
 
-        /* Floating Sub-nodes */
-        .sub-node-wrap { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        .sub-node-wrap { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 8px; }
         .floating-node {
-          width: 60px;
-          height: 60px;
+          width: 44px;
+          height: 44px;
           background: #0f172a;
           border: 1px solid rgba(255,255,255,0.1);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 1.2rem;
-          box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+          font-size: 1rem;
         }
-        .float-label { font-size: 0.6rem; font-weight: 700; color: #64748b; text-transform: uppercase; text-align: center; margin-top: 5px; }
+        .float-label { font-size: 0.55rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-top: 3px; }
 
-        /* Controls Tooltip */
         .node-controls {
           position: absolute;
-          top: -45px;
+          top: -35px;
           left: 50%;
           transform: translateX(-50%);
           background: #1e293b;
-          padding: 6px 12px;
-          border-radius: 10px;
+          padding: 4px 10px;
+          border-radius: 8px;
           display: flex;
-          gap: 15px;
+          gap: 12px;
           border: 1px solid rgba(255,255,255,0.1);
           opacity: 0;
-          transition: 0.3s;
-          pointer-events: none;
+          transition: 0.2s;
         }
-        .node:hover .node-controls { opacity: 1; top: -55px; pointer-events: all; }
-        .control-btn { font-size: 0.8rem; cursor: pointer; color: #94a3b8; transition: 0.2s; }
-        .control-btn:hover { color: white; transform: scale(1.2); }
-
-        .active-glow { position: absolute; inset: 0; border-radius: 16px; background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(99, 102, 241, 0.15) 0%, transparent 70%); pointer-events: none; }
+        .node:hover .node-controls { opacity: 1; top: -42px; }
+        .control-btn { font-size: 0.7rem; cursor: pointer; color: #94a3b8; }
+        .control-btn:hover { color: white; }
       </style>
 
-      <div class="wf-container" id="wfContainer">
-        <svg class="wf-svg-layer" id="wfLines">
-          <!-- Lines will be drawn here -->
-          <path id="path1" class="wf-line" d="M 340 480 C 440 480 440 480 540 480" />
-          <path id="path2" class="wf-line" d="M 780 480 C 830 480 830 400 880 350" />
-          <path id="path3" class="wf-line" d="M 780 480 C 830 480 830 560 880 610" />
-          <path id="path4" class="wf-line" d="M 1120 350 C 1170 350 1170 480 1220 480" />
-          <path id="path5" class="wf-line" d="M 1120 610 C 1170 610 1170 480 1220 480" />
+      <div class="wf-container">
+        <svg class="wf-svg-layer">
+          <path class="wf-line" d="M 240 300 C 270 300 270 300 300 300" />
+          <path class="wf-line" d="M 490 300 C 530 300 540 200 580 160" />
+          <path class="wf-line" d="M 490 300 C 530 300 540 400 580 440" />
+          <path class="wf-line" d="M 770 160 C 810 160 820 300 860 300" />
+          <path class="wf-line" d="M 770 440 C 810 440 820 300 860 300" />
         </svg>
 
         <div class="wf-canvas">
           <!-- TRIGGER -->
-          <div class="node" style="left: 100px;">
+          <div class="node" style="left: 50px; top: 250px;">
             <div class="node-controls">
-              <span class="control-btn">▶️</span>
-              <span class="control-btn">⚙️</span>
-              <span class="control-btn">🗑️</span>
+              <span class="control-btn">▶️</span> <span class="control-btn">⚙️</span> <span class="control-btn">🗑️</span>
             </div>
-            <div class="node-header">
-              <div class="node-icon">💬</div>
-              <div class="node-title">When Message Received</div>
-            </div>
-            <div class="node-body">Triggered by Facebook Webhook event from Messenger.</div>
+            <div class="node-header"><div class="node-icon">💬</div><div class="node-title">Messenger Trigger</div></div>
+            <div class="node-body">Incoming Webhook event.</div>
             <div class="port out"></div>
           </div>
 
           <!-- ROUTER -->
-          <div class="node" style="left: 440px;">
-            <div class="node-header">
-              <div class="node-icon">🔀</div>
-              <div class="node-title">Query Router</div>
-            </div>
-            <div class="node-body">Classification and security filtering for incoming text.</div>
+          <div class="node" style="left: 300px; top: 250px;">
+            <div class="node-header"><div class="node-icon">🔀</div><div class="node-title">Query Router</div></div>
+            <div class="node-body">Logic and security routing.</div>
             <div class="port in"></div>
             <div class="port out"></div>
-            <!-- Sub nodes for Router -->
-            <div class="sub-node-wrap" style="bottom: -130px; left: 50%; transform: translateX(-50%);">
-              <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
+            <div class="sub-node-wrap" style="bottom: -100px; left: 50%; transform: translateX(-50%);">
+              <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1);"></div>
               <div class="floating-node">🛡️</div>
-              <div class="float-label">Security Filter</div>
+              <div class="float-label">Security</div>
             </div>
           </div>
 
-          <!-- AI CORE BRANCH -->
-          <div class="node" style="left: 780px; top: -130px;">
+          <!-- AI CORE -->
+          <div class="node" style="left: 580px; top: 110px;">
             <div class="node-header">
-              <div class="node-icon">
-                <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" style="width: 24px;">
-              </div>
-              <div class="node-title">General LLM Chain</div>
+              <div class="node-icon"><img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" style="width: 20px;"></div>
+              <div class="node-title">Gemini 2.0</div>
             </div>
-            <div class="node-body">Primary reasoning via Gemini 2.0 Flash Expansion.</div>
+            <div class="node-body">Flash model reasoning.</div>
             <div class="port in"></div>
             <div class="port out"></div>
-            <!-- Sub nodes for LLM -->
-            <div class="sub-node-wrap" style="bottom: -130px; left: 50%; transform: translateX(-50%);">
-              <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
-              <div class="floating-node">✨</div>
-              <div class="float-label">Flash 2.0</div>
-            </div>
           </div>
 
-          <!-- MEMORY BRANCH -->
-          <div class="node" style="left: 780px; top: 130px;">
+          <!-- MEMORY -->
+          <div class="node" style="left: 580px; top: 390px;">
             <div class="node-header">
-              <div class="node-icon">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" style="width: 24px;">
-              </div>
-              <div class="node-title">Memory Store</div>
+              <div class="node-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" style="width: 20px;"></div>
+              <div class="node-title">Worker KV</div>
             </div>
-            <div class="node-body">Persists conversation history in Cloudflare Worker KV.</div>
+            <div class="node-body">Memory persistence.</div>
             <div class="port in"></div>
             <div class="port out"></div>
           </div>
 
           <!-- RESPONSE -->
-          <div class="node" style="left: 1120px;">
-            <div class="node-header">
-              <div class="node-icon">🚀</div>
-              <div class="node-title">Response Engine</div>
-            </div>
-            <div class="node-body">Final output generation and delivery to PSID.</div>
+          <div class="node" style="left: 860px; top: 250px;">
+            <div class="node-header"><div class="node-icon">🚀</div><div class="node-title">Response</div></div>
+            <div class="node-body">Final Chat Output.</div>
             <div class="port in"></div>
           </div>
         </div>
 
-        <!-- Footer Stats -->
-        <div style="position: absolute; bottom: 20px; left: 20px; z-index: 10; display: flex; gap: 20px;">
-          <div style="background: rgba(30, 41, 59, 0.8); padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; font-size: 0.75rem;">
-            CPU: <span style="color: #10b981; font-weight: 700;">8%</span>
-          </div>
-          <div style="background: rgba(30, 41, 59, 0.8); padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; font-size: 0.75rem;">
-            RAM: <span style="color: #10b981; font-weight: 700;">128MB</span>
-          </div>
+        <div style="position: absolute; bottom: 15px; left: 20px; display: flex; gap: 15px;">
+          <div style="background: rgba(30, 41, 59, 0.6); padding: 6px 12px; border-radius: 8px; color: #64748b; font-size: 0.65rem;">CPU: 8%</div>
+          <div style="background: rgba(30, 41, 59, 0.6); padding: 6px 12px; border-radius: 8px; color: #64748b; font-size: 0.65rem;">MEM: 128MB</div>
         </div>
       </div>
-
-      <script>
-        // Update SVG paths dynamically to handle node movement if needed
-        // For now, they are static based on the layout above
-      </script>
     ` : ''}
+
 
 
 
