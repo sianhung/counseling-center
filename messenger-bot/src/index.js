@@ -579,41 +579,49 @@ async function handleMessage(sender_psid, messageText, env) {
     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
   ];
 
-  // Call Gemini (Using v1 with 2.5 Flash as requested)
-  const apiKey = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/)[0];
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents, safetySettings })
-  });
+  // Multi-Key Fallback Strategy
+  const apiKeys = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy'));
+  let finalData = null;
+  let lastErrorDetails = null;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[GEMINI_HTTP_ERROR]', response.status, errorText);
+  for (let i = 0; i < apiKeys.length; i++) {
+    const key = apiKeys[i];
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents, safetySettings })
+      });
+
+      const resJson = await response.json();
+      if (response.ok) {
+        finalData = resJson;
+        break; // Success!
+      } else {
+        lastErrorDetails = resJson;
+        console.warn(`[AI_RETRY] Key ${i+1} failed:`, JSON.stringify(resJson));
+      }
+    } catch (e) {
+      lastErrorDetails = { message: e.message };
+    }
+  }
+
+  let aiText = '';
+  if (finalData && finalData.candidates && finalData.candidates[0] && finalData.candidates[0].content) {
+    aiText = finalData.candidates[0].content.parts[0].text;
+  } else {
+    // All keys failed or returned empty
+    console.error('[AI_FATAL_ERROR]', JSON.stringify(lastErrorDetails));
     await env.CHAT_LOGS.put('stat_last_ai_error', JSON.stringify({ 
       timestamp: Date.now(), 
       psid: sender_psid, 
-      error: { status: response.status, message: errorText } 
+      error: lastErrorDetails || 'All keys exhausted'
     }));
-    const fallback = "တောင်းပန်ပါတယ်ရှင့်။ အခုအချိန်မှာ စနစ်ပိုင်းဆိုင်ရာ အခက်အခဲလေးရှိနေလို့ ခဏနေမှ ပြန်ပြောပေးပါမယ်နော်။";
-    await callSendAPI(sender_psid, fallback, env.PAGE_ACCESS_TOKEN);
-    return;
-  }
-
-  const data = await response.json();
-  let aiText = '';
-
-  if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-    aiText = data.candidates[0].content.parts[0].text;
-  } else {
-    // Detect Safety Block or Error
-    console.error('[AI_ERROR]', JSON.stringify(data));
-    await env.CHAT_LOGS.put('stat_last_ai_error', JSON.stringify({ timestamp: Date.now(), psid: sender_psid, error: data }));
     
-    if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-      aiText = "ကျမတို့ Counseling Center မှ အမြဲအသင့်ရှိနေပါတယ်။ အခုပြောတဲ့အကြောင်းအရာက အရမ်းလေးနက်တဲ့အတွက်ကြောင့် စိတ်အေးအေးထားပြီး ခဏစောင့်ပေးပါနော်။ ကျမတို့ လူကိုယ်တိုင် ပြန်လည်ဖြေကြားပေးပါမယ်။ (We are here for you. This topic is very serious, please stay calm. We will reply to you personally soon.)";
+    if (lastErrorDetails?.candidates?.[0]?.finishReason === 'SAFETY') {
+      aiText = "ကျမတို့ Counseling Center မှ အမြဲအသင့်ရှိနေပါတယ်။ အခုပြောတဲ့အကြောင်းအရာက အရမ်းလေးနက်တဲ့အတွက်ကြောင့် စိတ်အေးအေးထားပြီး ခဏစောင့်ပေးပါနော်။ ကျမတို့ လူကိုယ်တိုင် ပြန်လည်ဖြေကြားပေးပါမယ်။";
     } else {
-      aiText = "တောင်းပန်ပါတယ်ရှင့်။ အခုအချိန်မှာ ခဏလေး အခက်အခဲဖြစ်နေလို့ ခဏနေမှ ပြန်ပြောပေးပါမယ်နော်။ (Apologies, I'm having a temporary difficulty. I'll get back to you soon.)";
+      aiText = "တောင်းပန်ပါတယ်ရှင့်။ အခုအချိန်မှာ စနစ်ပိုင်းဆိုင်ရာ အခက်အခဲလေးရှိနေလို့ ခဏနေမှ ပြန်ပြောပေးပါမယ်နော်။";
     }
   }
 
