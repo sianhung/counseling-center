@@ -86,11 +86,11 @@ async function renderDashboard(request, env) {
     body { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
     
     /* Sidebar */
-    .sidebar { width: 280px; background: var(--glass-dark); color: white; display: flex; flex-direction: column; padding: 2.5rem 1.5rem; }
-    .sidebar h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 1px; color: white; margin-bottom: 3rem; text-align: center; }
-    .nav-link { padding: 1.2rem; color: #94a3b8; text-decoration: none; border-radius: 16px; margin-bottom: 0.75rem; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 12px; font-weight: 600; }
-    .nav-link:hover { background: rgba(255,255,255,0.05); color: white; }
-    .nav-link.active { background: var(--primary); color: white; box-shadow: 0 8px 20px var(--primary-glow); }
+    .sidebar { width: 280px; background: #ffffff; color: #0f172a; display: flex; flex-direction: column; padding: 2.5rem 1.5rem; border-right: 1px solid var(--border); }
+    .sidebar h1 { font-size: 1.2rem; font-weight: 800; letter-spacing: 1px; color: #0f172a; margin-bottom: 3rem; text-align: center; }
+    .nav-link { padding: 1.2rem; color: #64748b; text-decoration: none; border-radius: 16px; margin-bottom: 0.75rem; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 12px; font-weight: 700; }
+    .nav-link:hover { background: #f8fafc; color: #0f172a; }
+    .nav-link.active { background: var(--primary); color: white; box-shadow: 0 10px 25px var(--primary-glow); }
 
     /* Main Container */
     .content { flex: 1; padding: 2.5rem; overflow-y: auto; background: radial-gradient(circle at 100% 0%, #eef2ff 0%, #f8fafc 50%); position: relative; }
