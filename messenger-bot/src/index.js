@@ -653,17 +653,16 @@ async function handleMessage(sender_psid, messageText, env) {
 
   // Key-First Multi-Model Fallback Strategy
   const apiKeys = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy'));
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash'];
+  const models = ['gemini-1.5-flash', 'gemini-2.0-flash-exp'];
   let finalData = null;
   let lastErrorDetails = null;
 
   for (let i = 0; i < apiKeys.length; i++) {
     const key = apiKeys[i];
-    let keyFailedCompletely = true;
 
     for (const model of models) {
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${key}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents, safetySettings })
