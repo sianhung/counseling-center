@@ -222,41 +222,111 @@ async function renderDashboard(request, env) {
         <div class="stat-card"><div class="label">Retention</div><div class="value">${psids.length} clients</div></div>
       </div>
 
+      <style>
+        .workflow-section { background: #0b0f1a; border-radius: 32px; padding: 6rem 2rem; margin-top: 1rem; position: relative; overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4); border: 1px solid #1e293b; }
+        .workflow-visual { display: flex; justify-content: center; align-items: center; position: relative; z-index: 2; max-width: 1000px; margin: 0 auto; gap: 0; }
+        
+        .wf-node { 
+          width: 130px; 
+          height: 130px; 
+          background: rgba(255, 255, 255, 0.03); 
+          backdrop-filter: blur(10px); 
+          border: 1px solid rgba(255, 255, 255, 0.1); 
+          border-radius: 28px; 
+          display: flex; 
+          flex-direction: column; 
+          align-items: center; 
+          justify-content: center; 
+          gap: 12px; 
+          transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+        }
+        .wf-node.active { 
+          border-color: var(--primary); 
+          box-shadow: 0 0 30px var(--primary-glow), inset 0 0 20px rgba(99, 102, 241, 0.1); 
+          background: rgba(99, 102, 241, 0.05);
+        }
+        .wf-node:hover { transform: translateY(-5px); border-color: white; }
+
+        .wf-logo { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.2)); transition: 0.3s; }
+        .wf-node.active .wf-logo { filter: drop-shadow(0 0 12px var(--primary-glow)); }
+
+        .wf-node span { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.2px; }
+        .wf-node .node-label { font-size: 0.9rem; font-weight: 600; color: white; margin-top: -4px; }
+
+        .wf-connector { width: 80px; height: 2px; background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%); position: relative; }
+        .wf-pulse { 
+          position: absolute; 
+          width: 8px; 
+          height: 8px; 
+          background: #818cf8; 
+          border-radius: 50%; 
+          top: -3px; 
+          box-shadow: 0 0 15px #6366f1, 0 0 5px white; 
+          animation: flow-n8n 2.5s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95); 
+          opacity: 0; 
+        }
+        @keyframes flow-n8n { 
+          0% { left: 0; opacity: 0; transform: scale(0.5); } 
+          10% { opacity: 1; transform: scale(1.2); }
+          90% { opacity: 1; transform: scale(1.2); }
+          100% { left: 100%; opacity: 0; transform: scale(0.5); } 
+        }
+
+        .node-badge { position: absolute; top: -10px; right: -10px; background: var(--accent); color: white; font-size: 0.6rem; font-weight: 800; padding: 4px 8px; border-radius: 8px; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
+      </style>
+
       <div class="workflow-section">
         <div class="bg-glow"></div>
         <div class="workflow-visual">
+          <!-- ENTRY -->
           <div class="wf-node active">
-            <h4>Entry</h4>
-            <div class="status">Messenger</div>
+            <div class="node-badge">LIVE</div>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/be/Facebook_Messenger_logo_2020.svg" class="wf-logo">
+            <span>Entry</span>
+            <div class="node-label">Messenger</div>
           </div>
+
           <div class="wf-connector">
             <div class="wf-pulse" style="animation-delay: 0s"></div>
           </div>
+
+          <!-- PROCESSOR -->
           <div class="wf-node active">
-            <h4>Processor</h4>
-            <div class="status">Gemini 2.5</div>
+            <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" class="wf-logo" style="width: 48px; height: 48px;">
+            <span>Processor</span>
+            <div class="node-label">Gemini 2.5</div>
           </div>
+
           <div class="wf-connector">
-            <div class="wf-pulse" style="animation-delay: 0.6s"></div>
+            <div class="wf-pulse" style="animation-delay: 0.8s"></div>
           </div>
+
+          <!-- STORAGE -->
           <div class="wf-node active">
-            <h4>Memory</h4>
-            <div class="status">Cloudflare KV</div>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" class="wf-logo" style="width: 50px;">
+            <span>Memory</span>
+            <div class="node-label">CF Worker KV</div>
           </div>
+
           <div class="wf-connector">
-            <div class="wf-pulse" style="animation-delay: 1.2s"></div>
+            <div class="wf-pulse" style="animation-delay: 1.6s"></div>
           </div>
+
+          <!-- OUTPUT -->
           <div class="wf-node active">
-            <h4>Output</h4>
-            <div class="status">Live Chat</div>
+            <div class="wf-logo" style="font-size: 2.2rem; display: flex; align-items: center; justify-content: center;">💬</div>
+            <span>Output</span>
+            <div class="node-label">Chat Response</div>
           </div>
         </div>
       </div>
 
       <div style="margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; display: flex; align-items:center; gap: 10px;">
-        <span class="pulse-dot"></span> System is currently monitoring live traffic...
+        <span class="pulse-dot"></span> All nodes operational. System latency: <span style="color: var(--accent); font-weight: 700;">42ms</span>
       </div>
     ` : ''}
+
 
     ${activeTab === 'settings' ? `
       <header><h2>System Configuration</h2></header>
