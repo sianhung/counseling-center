@@ -601,31 +601,40 @@ async function handleMessage(sender_psid, messageText, env) {
     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
   ];
 
-  // Multi-Key Fallback Strategy
+  // Multi-Key & Multi-Model Fallback Strategy
   const apiKeys = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy'));
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash-exp'];
   let finalData = null;
   let lastErrorDetails = null;
 
-  for (let i = 0; i < apiKeys.length; i++) {
-    const key = apiKeys[i];
-    try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents, safetySettings })
-      });
+  for (const model of models) {
+    for (let i = 0; i < apiKeys.length; i++) {
+      const key = apiKeys[i];
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents, safetySettings })
+        });
 
-      const resJson = await response.json();
-      if (response.ok) {
-        finalData = resJson;
-        break; // Success!
-      } else {
-        lastErrorDetails = resJson;
-        console.warn(`[AI_RETRY] Key ${i+1} failed:`, JSON.stringify(resJson));
+        const resJson = await response.json();
+        if (response.ok) {
+          finalData = resJson;
+          break; // Success!
+        } else {
+          lastErrorDetails = { model, keyIndex: i + 1, ...resJson };
+          console.warn(`[AI_RETRY] Model ${model} Key ${i+1} failed:`, response.status);
+          
+          // If high demand or rate limit, wait a bit before next try
+          if (response.status === 503 || response.status === 429) {
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        }
+      } catch (e) {
+        lastErrorDetails = { model, message: e.message };
       }
-    } catch (e) {
-      lastErrorDetails = { message: e.message };
     }
+    if (finalData) break;
   }
 
   let aiText = '';
