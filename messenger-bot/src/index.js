@@ -214,249 +214,211 @@ async function renderDashboard(request, env) {
     ` : ''}
 
     ${activeTab === 'workflow' ? `
-      <header><h2>System Architecture Workflow</h2></header>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="label">Traffic</div><div class="value">${totalMessages} msg</div></div>
-        <div class="stat-card"><div class="label">Compute</div><div class="value">${apiKeyCount} nodes</div></div>
-        <div class="stat-card"><div class="label">Last Pulse</div><div class="value">${lastWebhook === 'Never' ? '...' : new Date(parseInt(lastWebhook)).toLocaleTimeString()}</div></div>
-        <div class="stat-card"><div class="label">Retention</div><div class="value">${psids.length} clients</div></div>
-      </div>
-
       <style>
-        .workflow-section { 
-          background: #020617; 
-          border-radius: 40px; 
-          padding: 8rem 2rem; 
-          margin-top: 1rem; 
+        .content { padding: 0 !important; overflow: hidden !important; display: flex; flex-direction: column; }
+        .wf-container { 
+          flex: 1; 
+          background: #0f172a; 
           position: relative; 
           overflow: hidden; 
-          box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6); 
-          border: 1px solid rgba(255,255,255,0.05);
-          cursor: crosshair;
-        }
-        
-        /* Premium Background Grid */
-        .workflow-bg {
-          position: absolute;
-          inset: 0;
           background-image: 
-            radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
-          background-size: 40px 40px;
-          mask-image: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), black 0%, transparent 70%);
-          z-index: 0;
+            radial-gradient(circle at 2px 2px, rgba(255,255,255,0.03) 1px, transparent 0);
+          background-size: 32px 32px;
+          cursor: grab;
         }
-
-        .workflow-mesh {
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-                      radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
-          filter: blur(80px);
-          z-index: 0;
-        }
-
-        .workflow-visual { 
-          display: flex; 
-          justify-content: center; 
-          align-items: center; 
-          position: relative; 
-          z-index: 2; 
-          max-width: 1100px; 
-          margin: 0 auto; 
-        }
-        
-        .wf-node { 
-          width: 140px; 
-          height: 140px; 
-          background: rgba(15, 23, 42, 0.6); 
-          backdrop-filter: blur(20px); 
-          border: 1px solid rgba(255, 255, 255, 0.1); 
-          border-radius: 32px; 
-          display: flex; 
-          flex-direction: column; 
-          align-items: center; 
-          justify-content: center; 
-          gap: 12px; 
-          transition: 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        .wf-canvas {
+          width: 100%;
+          height: 100%;
           position: relative;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
-        .wf-node.active { 
-          border-color: rgba(99, 102, 241, 0.5); 
-          background: rgba(99, 102, 241, 0.05);
-        }
-        .wf-node:hover { 
-          transform: translateY(-8px) scale(1.05); 
-          border-color: white; 
-          z-index: 10;
-        }
-
-        .wf-logo { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 0 15px rgba(255,255,255,0.1)); }
-        
-        .node-meta { 
-          position: absolute; 
-          bottom: -35px; 
-          left: 50%; 
-          transform: translateX(-50%); 
-          white-space: nowrap; 
-          font-size: 0.65rem; 
-          font-weight: 600; 
-          color: #64748b; 
-          opacity: 0.8;
           display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2px;
-        }
-        .node-meta span { color: #818cf8; }
-
-        /* Sub-node / Tech Branch Style */
-        .sub-node {
-          width: 80px;
-          height: 80px;
-          background: rgba(15, 23, 42, 0.8);
-          border: 1px solid rgba(255,255,255,0.05);
-          border-radius: 20px;
-          display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-          position: absolute;
-          top: -100px;
-          font-size: 0.6rem;
-          color: #94a3b8;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-        .sub-node i { font-size: 1.2rem; margin-bottom: 5px; color: #10b981; }
-        .sub-line {
-          position: absolute;
-          width: 1px;
-          height: 20px;
-          background: rgba(255,255,255,0.1);
-          top: -20px;
+          padding: 100px;
+          min-width: 1400px;
         }
 
-        .wf-connector { 
-          flex: 1; 
-          min-width: 60px;
-          height: 2px; 
-          background: linear-gradient(90deg, rgba(99, 102, 241, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%); 
-          position: relative; 
+        /* SVG Layer for Curved Lines */
+        .wf-svg-layer {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 1;
         }
+        .wf-line {
+          fill: none;
+          stroke: rgba(99, 102, 241, 0.4);
+          stroke-width: 2.5;
+          stroke-dasharray: 8;
+          animation: dash 30s linear infinite;
+        }
+        @keyframes dash { to { stroke-dashoffset: -1000; } }
+
+        .node {
+          background: #1e293b;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 16px;
+          padding: 1.25rem;
+          width: 240px;
+          position: relative;
+          z-index: 2;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .node:hover { transform: translateY(-5px); border-color: #6366f1; box-shadow: 0 0 30px rgba(99, 102, 241, 0.2); }
         
-        /* Enhanced n8n Port Visuals */
-        .wf-node::before, .wf-node::after {
-          content: '';
-          position: absolute;
-          width: 10px;
-          height: 10px;
-          background: #020617;
-          border: 2px solid var(--primary);
+        .node-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .node-icon { width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .node-title { font-weight: 700; font-size: 0.9rem; color: white; letter-spacing: 0.5px; }
+        
+        .node-body { font-size: 0.75rem; color: #94a3b8; line-height: 1.4; }
+        
+        /* Node Ports */
+        .port { width: 10px; height: 10px; background: #0f172a; border: 2px solid #6366f1; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); }
+        .port.in { left: -6px; }
+        .port.out { right: -6px; }
+
+        /* Floating Sub-nodes */
+        .sub-node-wrap { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        .floating-node {
+          width: 60px;
+          height: 60px;
+          background: #0f172a;
+          border: 1px solid rgba(255,255,255,0.1);
           border-radius: 50%;
-          top: 50%;
-          transform: translateY(-50%);
-          z-index: 5;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.2rem;
+          box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-        .wf-node::before { left: -6px; }
-        .wf-node::after { right: -6px; }
+        .float-label { font-size: 0.6rem; font-weight: 700; color: #64748b; text-transform: uppercase; text-align: center; margin-top: 5px; }
 
-        .wf-pulse { 
-          position: absolute; 
-          width: 10px; 
-          height: 10px; 
-          background: white; 
-          border-radius: 50%; 
-          top: -4px; 
-          box-shadow: 0 0 20px #6366f1, 0 0 40px #6366f1; 
-          animation: flow-ultra 3s infinite cubic-bezier(0.4, 0, 0.2, 1); 
+        /* Controls Tooltip */
+        .node-controls {
+          position: absolute;
+          top: -45px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #1e293b;
+          padding: 6px 12px;
+          border-radius: 10px;
+          display: flex;
+          gap: 15px;
+          border: 1px solid rgba(255,255,255,0.1);
+          opacity: 0;
+          transition: 0.3s;
+          pointer-events: none;
         }
-        @keyframes flow-ultra { 
-          0% { left: 0; opacity: 0; transform: scale(0.4); } 
-          15% { opacity: 1; transform: scale(1.1); }
-          85% { opacity: 1; transform: scale(1.1); }
-          100% { left: 100%; opacity: 0; transform: scale(0.4); } 
-        }
+        .node:hover .node-controls { opacity: 1; top: -55px; pointer-events: all; }
+        .control-btn { font-size: 0.8rem; cursor: pointer; color: #94a3b8; transition: 0.2s; }
+        .control-btn:hover { color: white; transform: scale(1.2); }
 
-        .tech-badge { background: #1e293b; color: #94a3b8; font-size: 0.55rem; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+        .active-glow { position: absolute; inset: 0; border-radius: 16px; background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(99, 102, 241, 0.15) 0%, transparent 70%); pointer-events: none; }
       </style>
 
-      <div class="workflow-section" id="wfSection">
-        <div class="workflow-mesh"></div>
-        <div class="workflow-bg" id="wfGrid"></div>
-        
-        <div class="workflow-visual">
-          <!-- ENTRY -->
-          <div class="wf-node active">
-            <div class="node-badge" style="background: #3b82f6;">GATEWAY</div>
-            <img src="https://upload.wikimedia.org/wikipedia/commons/b/be/Facebook_Messenger_logo_2020.svg" class="wf-logo">
-            <div class="node-label">Messenger</div>
-            <div class="node-meta">Latency <span>12ms</span></div>
+      <div class="wf-container" id="wfContainer">
+        <svg class="wf-svg-layer" id="wfLines">
+          <!-- Lines will be drawn here -->
+          <path id="path1" class="wf-line" d="M 340 480 C 440 480 440 480 540 480" />
+          <path id="path2" class="wf-line" d="M 780 480 C 830 480 830 400 880 350" />
+          <path id="path3" class="wf-line" d="M 780 480 C 830 480 830 560 880 610" />
+          <path id="path4" class="wf-line" d="M 1120 350 C 1170 350 1170 480 1220 480" />
+          <path id="path5" class="wf-line" d="M 1120 610 C 1170 610 1170 480 1220 480" />
+        </svg>
+
+        <div class="wf-canvas">
+          <!-- TRIGGER -->
+          <div class="node" style="left: 100px;">
+            <div class="node-controls">
+              <span class="control-btn">▶️</span>
+              <span class="control-btn">⚙️</span>
+              <span class="control-btn">🗑️</span>
+            </div>
+            <div class="node-header">
+              <div class="node-icon">💬</div>
+              <div class="node-title">When Message Received</div>
+            </div>
+            <div class="node-body">Triggered by Facebook Webhook event from Messenger.</div>
+            <div class="port out"></div>
           </div>
 
-          <div class="wf-connector">
-            <div class="wf-pulse" style="animation-delay: 0s"></div>
+          <!-- ROUTER -->
+          <div class="node" style="left: 440px;">
+            <div class="node-header">
+              <div class="node-icon">🔀</div>
+              <div class="node-title">Query Router</div>
+            </div>
+            <div class="node-body">Classification and security filtering for incoming text.</div>
+            <div class="port in"></div>
+            <div class="port out"></div>
+            <!-- Sub nodes for Router -->
+            <div class="sub-node-wrap" style="bottom: -130px; left: 50%; transform: translateX(-50%);">
+              <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
+              <div class="floating-node">🛡️</div>
+              <div class="float-label">Security Filter</div>
+            </div>
           </div>
 
-          <!-- SECURITY BRANCH (DETAIL) -->
-          <div style="position: relative;">
-             <div class="sub-line" style="height: 100px; top: -100px; left: 50%;"></div>
-             <div class="sub-node">
-                <span style="font-size: 1.5rem">🛡️</span>
-                Security
-                <div class="tech-badge">SSL/TLS</div>
-             </div>
+          <!-- AI CORE BRANCH -->
+          <div class="node" style="left: 780px; top: -130px;">
+            <div class="node-header">
+              <div class="node-icon">
+                <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" style="width: 24px;">
+              </div>
+              <div class="node-title">General LLM Chain</div>
+            </div>
+            <div class="node-body">Primary reasoning via Gemini 2.0 Flash Expansion.</div>
+            <div class="port in"></div>
+            <div class="port out"></div>
+            <!-- Sub nodes for LLM -->
+            <div class="sub-node-wrap" style="bottom: -130px; left: 50%; transform: translateX(-50%);">
+              <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
+              <div class="floating-node">✨</div>
+              <div class="float-label">Flash 2.0</div>
+            </div>
           </div>
 
-          <!-- PROCESSOR -->
-          <div class="wf-node active">
-            <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" class="wf-logo" style="width: 50px;">
-            <div class="node-label">Gemini 2.5</div>
-            <div class="node-meta">Tokens <span>1.2k/s</span></div>
+          <!-- MEMORY BRANCH -->
+          <div class="node" style="left: 780px; top: 130px;">
+            <div class="node-header">
+              <div class="node-icon">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" style="width: 24px;">
+              </div>
+              <div class="node-title">Memory Store</div>
+            </div>
+            <div class="node-body">Persists conversation history in Cloudflare Worker KV.</div>
+            <div class="port in"></div>
+            <div class="port out"></div>
           </div>
 
-          <div class="wf-connector">
-            <div class="wf-pulse" style="animation-delay: 1s"></div>
+          <!-- RESPONSE -->
+          <div class="node" style="left: 1120px;">
+            <div class="node-header">
+              <div class="node-icon">🚀</div>
+              <div class="node-title">Response Engine</div>
+            </div>
+            <div class="node-body">Final output generation and delivery to PSID.</div>
+            <div class="port in"></div>
           </div>
+        </div>
 
-          <!-- STORAGE -->
-          <div class="wf-node active">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" class="wf-logo" style="width: 55px;">
-            <div class="node-label">KV Storage</div>
-            <div class="node-meta">Read <span>0.8ms</span></div>
+        <!-- Footer Stats -->
+        <div style="position: absolute; bottom: 20px; left: 20px; z-index: 10; display: flex; gap: 20px;">
+          <div style="background: rgba(30, 41, 59, 0.8); padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; font-size: 0.75rem;">
+            CPU: <span style="color: #10b981; font-weight: 700;">8%</span>
           </div>
-
-          <div class="wf-connector">
-            <div class="wf-pulse" style="animation-delay: 2s"></div>
-          </div>
-
-          <!-- OUTPUT -->
-          <div class="wf-node active">
-            <div style="font-size: 2.5rem;">⚡</div>
-            <div class="node-label">Response</div>
-            <div class="node-meta">Status <span>200 OK</span></div>
+          <div style="background: rgba(30, 41, 59, 0.8); padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; font-size: 0.75rem;">
+            RAM: <span style="color: #10b981; font-weight: 700;">128MB</span>
           </div>
         </div>
       </div>
 
       <script>
-        const section = document.getElementById('wfSection');
-        const grid = document.getElementById('wfGrid');
-        section.addEventListener('mousemove', (e) => {
-          const rect = section.getBoundingClientRect();
-          const x = ((e.clientX - rect.left) / rect.width) * 100;
-          const y = ((e.clientY - rect.top) / rect.height) * 100;
-          grid.style.setProperty('--mouse-x', x + '%');
-          grid.style.setProperty('--mouse-y', y + '%');
-        });
+        // Update SVG paths dynamically to handle node movement if needed
+        // For now, they are static based on the layout above
       </script>
-
-      <div style="margin-top: 3.5rem; color: #64748b; font-size: 0.85rem; display: flex; align-items:center; gap: 12px;">
-        <div class="pulse-dot" style="background: #10b981;"></div> 
-        <span style="letter-spacing: 0.5px;">SYSTEM STATUS: <b style="color: white;">NOMINAL</b> | NODES: <b style="color: white;">4 ACTIVE</b> | REGION: <b style="color: white;">GLOBAL-EDGE</b></span>
-      </div>
     ` : ''}
+
 
 
 
