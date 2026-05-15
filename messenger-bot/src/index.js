@@ -662,7 +662,7 @@ async function handleMessage(sender_psid, messageText, env) {
 
     for (const model of models) {
       try {
-        const apiVersion = model.includes('2.0') ? 'v1beta' : 'v1';
+        const apiVersion = 'v1beta'; // Unify on v1beta for all models
         const response = await fetch(`https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
