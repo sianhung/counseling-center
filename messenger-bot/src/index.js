@@ -583,9 +583,9 @@ async function handleMessage(sender_psid, messageText, env) {
     particle = "ရှင့်";
   }
 
-  // Prepare contents for Gemini with strict but NATURAL gender instruction
+  // Prepare contents for Gemini with AGGRESSIVE naturalness instruction
   const contents = [
-    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. You MUST use the polite particle "${particle}" but use it NATURALLY and SPARINGLY. \n- DO NOT repeat "${particle}" at the end of every single sentence or bullet point. \n- Use it only at the start and the very end of your response, and perhaps once in the middle if natural. \n- Sound like a warm, human counselor, not a repetitive robot.` }] },
+    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL LINGUISTIC RULE: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. \n1. Use the polite particle "${particle}" ONLY at the very beginning (e.g. "ဟုတ်ကဲ့ပါ${particle}...") and at the very end of your entire response.\n2. DO NOT repeat "${particle}" at the end of every sentence. This is UNACCEPTABLE and sounds like a robot.\n3. MAXIMUM count of "${particle}" per response is TWO (2) times. \n4. Example of a GOOD response: "ဟုတ်ကဲ့ပါ${particle}။ စိတ်ထဲမှာရှိတာတွေကို ပွင့်ပွင့်လင်းလင်း ပြောပြပေးလို့ ကျေးဇူးတင်ပါတယ်။ ... (natural middle) ... ကျွန်တော် အမြဲရှိနေပါတယ်${particle}။"` }] },
     ...history.slice(-10).flatMap(log => [
       { role: 'user', parts: [{ text: log.user_message }] },
       { role: 'model', parts: [{ text: log.ai_response }] }
