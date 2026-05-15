@@ -37,7 +37,7 @@ async function renderDashboard(request, env) {
       const logs = (await env.CHAT_LOGS.get(`psid_${psid}`, { type: 'json' })) || [];
       
       userGridHtml += `
-        <div class="user-card">
+        <div class="user-card" onclick="filterByClient('${psid}', this)" data-psid="${psid}">
           ${profile.pic ? `<img src="${profile.pic}" class="user-avatar">` : `<div class="user-avatar-placeholder">👤</div>`}
           <div class="user-info">
             <h3>${profile.name}</h3>
@@ -49,7 +49,7 @@ async function renderDashboard(request, env) {
       for (const log of logs) {
         const timeStr = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         chatRowsHtml += `
-          <tr>
+          <tr class="chat-row" data-psid="${psid}">
             <td>
               <div class="client-compact">
                 ${profile.pic ? `<img src="${profile.pic}" class="compact-avatar">` : `<div class="compact-placeholder">👤</div>`}
@@ -100,43 +100,23 @@ async function renderDashboard(request, env) {
     .sync-btn { background: white; color: var(--text); border: 1px solid var(--border); padding: 0.6rem 1.2rem; border-radius: 12px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
     .sync-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
 
-    /* Stats */
+    /* Stats Cards */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
     .stat-card { background: var(--glass); backdrop-filter: blur(12px); padding: 1.5rem; border-radius: 24px; border: 1px solid white; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
     .stat-card .label { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.5px; }
     .stat-card .value { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
 
-    /* User Grid & Avatar Fix */
+    /* User Directory */
     .user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem; }
-    .user-card { background: white; padding: 1rem; border-radius: 20px; border: 1px solid var(--border); display: flex; align-items: center; gap: 14px; transition: 0.3s; cursor: default; }
-    .user-card:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(0,0,0,0.06); }
+    .user-card { background: white; padding: 1rem; border-radius: 20px; border: 1px solid var(--border); display: flex; align-items: center; gap: 14px; transition: 0.3s; cursor: pointer; user-select: none; position: relative; }
+    .user-card:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(0,0,0,0.06); border-color: var(--primary); }
+    .user-card.active { border-color: var(--primary); background: #f5f7ff; box-shadow: 0 10px 20px var(--primary-glow); }
     
     .user-avatar { width: 48px; height: 48px; border-radius: 50%; background: #f1f5f9; object-fit: cover; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     .user-avatar-placeholder { width: 48px; height: 48px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
     
-    .user-info h3 { margin: 0; font-size: 0.95rem; font-weight: 700; color: #0f172a; }
-    .user-info p { margin: 2px 0 0; font-size: 0.75rem; color: var(--text-muted); font-family: monospace; }
-
-    /* Live Workflow Tracker - FULL SCREEN STYLE */
-    .workflow-section { background: var(--glass-dark); border-radius: 32px; padding: 5rem 3rem; margin-top: 1rem; position: relative; overflow: hidden; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3); }
-    .workflow-visual { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; max-width: 900px; margin: 0 auto; }
-    
-    .wf-node { width: 160px; padding: 1.5rem 1rem; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(8px); border: 2px solid #334155; border-radius: 24px; color: white; text-align: center; transition: 0.5s; position: relative; }
-    .wf-node.active { border-color: var(--primary); box-shadow: 0 0 40px var(--primary-glow); transform: scale(1.05); background: rgba(99, 102, 241, 0.1); }
-    .wf-node h4 { margin: 0; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
-    .wf-node .status { font-size: 1rem; font-weight: 700; margin-top: 8px; color: white; }
-    .wf-node i { display: block; font-size: 1.5rem; margin-bottom: 10px; }
-
-    .wf-connector { flex: 1; height: 2px; background: #334155; position: relative; margin: 0 10px; }
-    .wf-pulse { position: absolute; width: 12px; height: 12px; background: var(--primary); border-radius: 50%; top: -5px; box-shadow: 0 0 15px var(--primary); animation: flow 2s infinite linear; opacity: 0; }
-    @keyframes flow { 
-      0% { left: 0; opacity: 0; transform: scale(0.5); } 
-      20% { opacity: 1; transform: scale(1); }
-      80% { opacity: 1; transform: scale(1); }
-      100% { left: 100%; opacity: 0; transform: scale(0.5); } 
-    }
-
-    .bg-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; background: var(--primary); filter: blur(150px); opacity: 0.15; z-index: 1; }
+    .user-info h3 { margin: 0; font-size: 0.9rem; font-weight: 800; color: #0f172a; }
+    .user-info p { margin: 2px 0 0; font-size: 0.7rem; color: var(--text-muted); font-family: monospace; }
 
     /* Live Feed Table */
     .table-container { background: white; border-radius: 28px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
@@ -152,19 +132,43 @@ async function renderDashboard(request, env) {
     .client-compact span { font-weight: 700; color: #0f172a; font-size: 0.85rem; }
     .client-compact small { font-weight: 400; color: var(--text-muted); font-size: 0.7rem; }
 
-    /* Settings */
+    /* Settings & Utils */
     .settings-card { background: white; padding: 2.5rem; border-radius: 32px; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.03); max-width: 800px; }
-    .form-group { margin-bottom: 2rem; }
-    label { display: block; font-weight: 700; margin-bottom: 0.75rem; color: #0f172a; font-size: 1rem; }
     textarea { width: 100%; height: 250px; padding: 1.25rem; border-radius: 20px; border: 2px solid var(--border); font-family: inherit; font-size: 1rem; line-height: 1.6; transition: 0.3s; resize: vertical; background: #fcfdff; }
     textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-glow); }
     .save-btn { background: var(--primary); color: white; border: none; padding: 1rem 2.5rem; border-radius: 16px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 10px; }
     .save-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px var(--primary-glow); opacity: 0.9; }
 
-    /* Pulse for Workflow Tab Title */
+    .chat-row { transition: 0.2s ease-in-out; }
+    .hidden { display: none !important; }
+
     .pulse-dot { display: inline-block; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; margin-left: 8px; animation: blink 1.5s infinite; }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   </style>
+
+  <script>
+    function filterByClient(psid, el) {
+      const rows = document.querySelectorAll('.chat-row');
+      const cards = document.querySelectorAll('.user-card');
+      
+      if (el && el.classList.contains('active')) {
+        cards.forEach(c => c.classList.remove('active'));
+        rows.forEach(r => r.classList.remove('hidden'));
+        return;
+      }
+
+      cards.forEach(c => c.classList.remove('active'));
+      if (el) el.classList.add('active');
+
+      rows.forEach(row => {
+        if (row.getAttribute('data-psid') === psid) {
+          row.classList.remove('hidden');
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+    }
+  </script>
 </head>
 <body>
   <div class="sidebar">
@@ -585,16 +589,21 @@ async function getFacebookProfile(psid, env, force = false) {
   const cacheKey = `profile_${psid}`;
   if (!force) {
     const cached = await env.CHAT_LOGS.get(cacheKey, { type: 'json' });
-    // Only return cached if it has a real name (not placeholder)
     if (cached && cached.name && !cached.name.startsWith('User ')) return cached;
   }
 
+  console.log(`[ProfileSync] Attempting fetch for PSID: ${psid}`);
   try {
-    const response = await fetch(`https://graph.facebook.com/${psid}?fields=first_name,last_name,profile_pic&access_token=${env.PAGE_ACCESS_TOKEN}`);
+    const fbUrl = `https://graph.facebook.com/${psid}?fields=first_name,last_name,profile_pic&access_token=${env.PAGE_ACCESS_TOKEN}`;
+    const response = await fetch(fbUrl);
     const data = await response.json();
     
     if (data.error) {
-       console.error('FB API Error:', data.error);
+       console.error(`[ProfileSync] FB API Error for ${psid}:`, JSON.stringify(data.error));
+       // Check for common permission issues
+       if (data.error.code === 100) {
+         console.warn(`[ProfileSync] PSID ${psid} might be invalid or app lacks permissions for this user.`);
+       }
        return { name: `User ${psid}`, pic: '' };
     }
 
@@ -603,14 +612,16 @@ async function getFacebookProfile(psid, env, force = false) {
       pic: data.profile_pic || ''
     };
     
-    // Only cache if we got a real name
     if (profile.name !== `User ${psid}`) {
+      console.log(`[ProfileSync] Success for ${psid}: ${profile.name}`);
       await env.CHAT_LOGS.put(cacheKey, JSON.stringify(profile));
+    } else {
+      console.warn(`[ProfileSync] No name data returned for ${psid}`);
     }
     
     return profile;
   } catch (e) {
-    console.error('Fetch Error:', e);
+    console.error(`[ProfileSync] Network Error for ${psid}:`, e.message);
     return { name: `User ${psid}`, pic: '' };
   }
 }
