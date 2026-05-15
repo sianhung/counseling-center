@@ -583,9 +583,9 @@ async function handleMessage(sender_psid, messageText, env) {
     particle = "ရှင့်";
   }
 
-  // Prepare contents for Gemini with AGGRESSIVE naturalness instruction
+  // Prepare contents for Gemini with GREETING/CLOSING ONLY instruction
   const contents = [
-    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL LINGUISTIC RULE: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. \n1. Use the polite particle "${particle}" ONLY at the very beginning (e.g. "ဟုတ်ကဲ့ပါ${particle}...") and at the very end of your entire response.\n2. DO NOT repeat "${particle}" at the end of every sentence. This is UNACCEPTABLE and sounds like a robot.\n3. MAXIMUM count of "${particle}" per response is TWO (2) times. \n4. Example of a GOOD response: "ဟုတ်ကဲ့ပါ${particle}။ စိတ်ထဲမှာရှိတာတွေကို ပွင့်ပွင့်လင်းလင်း ပြောပြပေးလို့ ကျေးဇူးတင်ပါတယ်။ ... (natural middle) ... ကျွန်တော် အမြဲရှိနေပါတယ်${particle}။"` }] },
+    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL LINGUISTIC RULE: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. \n1. Use the polite particle "${particle}" ONLY in your initial greeting (e.g. "မင်္ဂလာပါ${particle}" or "ဟုတ်ကဲ့ပါ${particle}") and in your final goodbye/closing sentence.\n2. DO NOT use "${particle}" anywhere else in the body of your response or at the end of middle sentences.\n3. This mirrors natural Myanmar conversation where these terms are used for formal opening and closing only.` }] },
     ...history.slice(-10).flatMap(log => [
       { role: 'user', parts: [{ text: log.user_message }] },
       { role: 'model', parts: [{ text: log.ai_response }] }
