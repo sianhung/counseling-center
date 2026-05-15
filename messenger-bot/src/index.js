@@ -651,9 +651,9 @@ async function handleMessage(sender_psid, messageText, env) {
     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
   ];
 
-  // 2.0 Flash Experimental Only Strategy
+  // Dual-Model Resilient Strategy (2.0 Priority, 1.5 Safety)
   const apiKeys = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy'));
-  const models = ['gemini-2.0-flash-exp'];
+  const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash'];
   let finalData = null;
   let lastErrorDetails = null;
 
