@@ -583,9 +583,9 @@ async function handleMessage(sender_psid, messageText, env) {
     particle = "ရှင့်";
   }
 
-  // Prepare contents for Gemini with strict gender instruction
+  // Prepare contents for Gemini with strict but NATURAL gender instruction
   const contents = [
-    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. You MUST consistently use the polite particle "${particle}" throughout your response. Never mix it with other gender terms.` }] },
+    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. You MUST use the polite particle "${particle}" but use it NATURALLY and SPARINGLY. \n- DO NOT repeat "${particle}" at the end of every single sentence or bullet point. \n- Use it only at the start and the very end of your response, and perhaps once in the middle if natural. \n- Sound like a warm, human counselor, not a repetitive robot.` }] },
     ...history.slice(-10).flatMap(log => [
       { role: 'user', parts: [{ text: log.user_message }] },
       { role: 'model', parts: [{ text: log.ai_response }] }
