@@ -214,7 +214,7 @@ async function renderDashboard(request, env) {
     ` : ''}
 
     ${activeTab === 'workflow' ? `
-      <header><h2>System Live Workflow</h2></header>
+      <header><h2>System Architecture Workflow</h2></header>
       <div class="stats-grid">
         <div class="stat-card"><div class="label">Traffic</div><div class="value">${totalMessages} msg</div></div>
         <div class="stat-card"><div class="label">Compute</div><div class="value">${apiKeyCount} nodes</div></div>
@@ -223,109 +223,241 @@ async function renderDashboard(request, env) {
       </div>
 
       <style>
-        .workflow-section { background: #0b0f1a; border-radius: 32px; padding: 6rem 2rem; margin-top: 1rem; position: relative; overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4); border: 1px solid #1e293b; }
-        .workflow-visual { display: flex; justify-content: center; align-items: center; position: relative; z-index: 2; max-width: 1000px; margin: 0 auto; gap: 0; }
+        .workflow-section { 
+          background: #020617; 
+          border-radius: 40px; 
+          padding: 8rem 2rem; 
+          margin-top: 1rem; 
+          position: relative; 
+          overflow: hidden; 
+          box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6); 
+          border: 1px solid rgba(255,255,255,0.05);
+          cursor: crosshair;
+        }
+        
+        /* Premium Background Grid */
+        .workflow-bg {
+          position: absolute;
+          inset: 0;
+          background-image: 
+            radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
+          background-size: 40px 40px;
+          mask-image: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), black 0%, transparent 70%);
+          z-index: 0;
+        }
+
+        .workflow-mesh {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                      radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+          filter: blur(80px);
+          z-index: 0;
+        }
+
+        .workflow-visual { 
+          display: flex; 
+          justify-content: center; 
+          align-items: center; 
+          position: relative; 
+          z-index: 2; 
+          max-width: 1100px; 
+          margin: 0 auto; 
+        }
         
         .wf-node { 
-          width: 130px; 
-          height: 130px; 
-          background: rgba(255, 255, 255, 0.03); 
-          backdrop-filter: blur(10px); 
+          width: 140px; 
+          height: 140px; 
+          background: rgba(15, 23, 42, 0.6); 
+          backdrop-filter: blur(20px); 
           border: 1px solid rgba(255, 255, 255, 0.1); 
-          border-radius: 28px; 
+          border-radius: 32px; 
           display: flex; 
           flex-direction: column; 
           align-items: center; 
           justify-content: center; 
           gap: 12px; 
-          transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
           position: relative;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
         .wf-node.active { 
-          border-color: var(--primary); 
-          box-shadow: 0 0 30px var(--primary-glow), inset 0 0 20px rgba(99, 102, 241, 0.1); 
+          border-color: rgba(99, 102, 241, 0.5); 
           background: rgba(99, 102, 241, 0.05);
         }
-        .wf-node:hover { transform: translateY(-5px); border-color: white; }
+        .wf-node:hover { 
+          transform: translateY(-8px) scale(1.05); 
+          border-color: white; 
+          z-index: 10;
+        }
 
-        .wf-logo { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.2)); transition: 0.3s; }
-        .wf-node.active .wf-logo { filter: drop-shadow(0 0 12px var(--primary-glow)); }
+        .wf-logo { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 0 15px rgba(255,255,255,0.1)); }
+        
+        .node-meta { 
+          position: absolute; 
+          bottom: -35px; 
+          left: 50%; 
+          transform: translateX(-50%); 
+          white-space: nowrap; 
+          font-size: 0.65rem; 
+          font-weight: 600; 
+          color: #64748b; 
+          opacity: 0.8;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+        }
+        .node-meta span { color: #818cf8; }
 
-        .wf-node span { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.2px; }
-        .wf-node .node-label { font-size: 0.9rem; font-weight: 600; color: white; margin-top: -4px; }
+        /* Sub-node / Tech Branch Style */
+        .sub-node {
+          width: 80px;
+          height: 80px;
+          background: rgba(15, 23, 42, 0.8);
+          border: 1px solid rgba(255,255,255,0.05);
+          border-radius: 20px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          position: absolute;
+          top: -100px;
+          font-size: 0.6rem;
+          color: #94a3b8;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        .sub-node i { font-size: 1.2rem; margin-bottom: 5px; color: #10b981; }
+        .sub-line {
+          position: absolute;
+          width: 1px;
+          height: 20px;
+          background: rgba(255,255,255,0.1);
+          top: -20px;
+        }
 
-        .wf-connector { width: 80px; height: 2px; background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%); position: relative; }
+        .wf-connector { 
+          flex: 1; 
+          min-width: 60px;
+          height: 2px; 
+          background: linear-gradient(90deg, rgba(99, 102, 241, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%); 
+          position: relative; 
+        }
+        
+        /* Enhanced n8n Port Visuals */
+        .wf-node::before, .wf-node::after {
+          content: '';
+          position: absolute;
+          width: 10px;
+          height: 10px;
+          background: #020617;
+          border: 2px solid var(--primary);
+          border-radius: 50%;
+          top: 50%;
+          transform: translateY(-50%);
+          z-index: 5;
+        }
+        .wf-node::before { left: -6px; }
+        .wf-node::after { right: -6px; }
+
         .wf-pulse { 
           position: absolute; 
-          width: 8px; 
-          height: 8px; 
-          background: #818cf8; 
+          width: 10px; 
+          height: 10px; 
+          background: white; 
           border-radius: 50%; 
-          top: -3px; 
-          box-shadow: 0 0 15px #6366f1, 0 0 5px white; 
-          animation: flow-n8n 2.5s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95); 
-          opacity: 0; 
+          top: -4px; 
+          box-shadow: 0 0 20px #6366f1, 0 0 40px #6366f1; 
+          animation: flow-ultra 3s infinite cubic-bezier(0.4, 0, 0.2, 1); 
         }
-        @keyframes flow-n8n { 
-          0% { left: 0; opacity: 0; transform: scale(0.5); } 
-          10% { opacity: 1; transform: scale(1.2); }
-          90% { opacity: 1; transform: scale(1.2); }
-          100% { left: 100%; opacity: 0; transform: scale(0.5); } 
+        @keyframes flow-ultra { 
+          0% { left: 0; opacity: 0; transform: scale(0.4); } 
+          15% { opacity: 1; transform: scale(1.1); }
+          85% { opacity: 1; transform: scale(1.1); }
+          100% { left: 100%; opacity: 0; transform: scale(0.4); } 
         }
 
-        .node-badge { position: absolute; top: -10px; right: -10px; background: var(--accent); color: white; font-size: 0.6rem; font-weight: 800; padding: 4px 8px; border-radius: 8px; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
+        .tech-badge { background: #1e293b; color: #94a3b8; font-size: 0.55rem; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
       </style>
 
-      <div class="workflow-section">
-        <div class="bg-glow"></div>
+      <div class="workflow-section" id="wfSection">
+        <div class="workflow-mesh"></div>
+        <div class="workflow-bg" id="wfGrid"></div>
+        
         <div class="workflow-visual">
           <!-- ENTRY -->
           <div class="wf-node active">
-            <div class="node-badge">LIVE</div>
+            <div class="node-badge" style="background: #3b82f6;">GATEWAY</div>
             <img src="https://upload.wikimedia.org/wikipedia/commons/b/be/Facebook_Messenger_logo_2020.svg" class="wf-logo">
-            <span>Entry</span>
             <div class="node-label">Messenger</div>
+            <div class="node-meta">Latency <span>12ms</span></div>
           </div>
 
           <div class="wf-connector">
             <div class="wf-pulse" style="animation-delay: 0s"></div>
           </div>
 
+          <!-- SECURITY BRANCH (DETAIL) -->
+          <div style="position: relative;">
+             <div class="sub-line" style="height: 100px; top: -100px; left: 50%;"></div>
+             <div class="sub-node">
+                <span style="font-size: 1.5rem">🛡️</span>
+                Security
+                <div class="tech-badge">SSL/TLS</div>
+             </div>
+          </div>
+
           <!-- PROCESSOR -->
           <div class="wf-node active">
-            <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" class="wf-logo" style="width: 48px; height: 48px;">
-            <span>Processor</span>
+            <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" class="wf-logo" style="width: 50px;">
             <div class="node-label">Gemini 2.5</div>
+            <div class="node-meta">Tokens <span>1.2k/s</span></div>
           </div>
 
           <div class="wf-connector">
-            <div class="wf-pulse" style="animation-delay: 0.8s"></div>
+            <div class="wf-pulse" style="animation-delay: 1s"></div>
           </div>
 
           <!-- STORAGE -->
           <div class="wf-node active">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" class="wf-logo" style="width: 50px;">
-            <span>Memory</span>
-            <div class="node-label">CF Worker KV</div>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" class="wf-logo" style="width: 55px;">
+            <div class="node-label">KV Storage</div>
+            <div class="node-meta">Read <span>0.8ms</span></div>
           </div>
 
           <div class="wf-connector">
-            <div class="wf-pulse" style="animation-delay: 1.6s"></div>
+            <div class="wf-pulse" style="animation-delay: 2s"></div>
           </div>
 
           <!-- OUTPUT -->
           <div class="wf-node active">
-            <div class="wf-logo" style="font-size: 2.2rem; display: flex; align-items: center; justify-content: center;">💬</div>
-            <span>Output</span>
-            <div class="node-label">Chat Response</div>
+            <div style="font-size: 2.5rem;">⚡</div>
+            <div class="node-label">Response</div>
+            <div class="node-meta">Status <span>200 OK</span></div>
           </div>
         </div>
       </div>
 
-      <div style="margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; display: flex; align-items:center; gap: 10px;">
-        <span class="pulse-dot"></span> All nodes operational. System latency: <span style="color: var(--accent); font-weight: 700;">42ms</span>
+      <script>
+        const section = document.getElementById('wfSection');
+        const grid = document.getElementById('wfGrid');
+        section.addEventListener('mousemove', (e) => {
+          const rect = section.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width) * 100;
+          const y = ((e.clientY - rect.top) / rect.height) * 100;
+          grid.style.setProperty('--mouse-x', x + '%');
+          grid.style.setProperty('--mouse-y', y + '%');
+        });
+      </script>
+
+      <div style="margin-top: 3.5rem; color: #64748b; font-size: 0.85rem; display: flex; align-items:center; gap: 12px;">
+        <div class="pulse-dot" style="background: #10b981;"></div> 
+        <span style="letter-spacing: 0.5px;">SYSTEM STATUS: <b style="color: white;">NOMINAL</b> | NODES: <b style="color: white;">4 ACTIVE</b> | REGION: <b style="color: white;">GLOBAL-EDGE</b></span>
       </div>
     ` : ''}
+
 
 
     ${activeTab === 'settings' ? `
