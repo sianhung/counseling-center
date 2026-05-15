@@ -576,6 +576,26 @@ export default {
     }
 
     return new Response('Not Found', { status: 404 });
+  },
+
+  async scheduled(event, env, ctx) {
+    console.log('[AUTO_SWEEP] Running self-healing sweep...');
+    const psids = (await env.CHAT_LOGS.get('all_active_psids', { type: 'json' })) || [];
+    
+    for (const psid of psids) {
+      const logs = (await env.CHAT_LOGS.get(`psid_${psid}`, { type: 'json' })) || [];
+      if (logs.length > 0) {
+        const lastLog = logs[logs.length - 1];
+        // If last message is from user and no AI response, or it's the fallback error
+        if (!lastLog.ai_response || lastLog.ai_response.includes('တောင်းပန်ပါတယ်ရှင့်')) {
+          const userMsg = lastLog.user_message;
+          if (userMsg) {
+            console.log(`[AUTO_SWEEP] Catching up for PSID: ${psid}`);
+            ctx.waitUntil(handleMessage(psid, userMsg, env));
+          }
+        }
+      }
+    }
   }
 };
 
