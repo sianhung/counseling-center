@@ -651,19 +651,21 @@ async function handleMessage(sender_psid, messageText, env) {
     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
   ];
 
-  // Dual-Model Resilient Strategy (2.0 Priority, 1.5 Safety)
+  // Resilient Multi-Key & Multi-Model Rotation
   const apiKeys = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy'));
-  const models = ['gemini-2.0-flash-exp', 'gemini-1.5-pro'];
   let finalData = null;
   let lastErrorDetails = null;
 
   for (let i = 0; i < apiKeys.length; i++) {
     const key = apiKeys[i];
+    const modelConfigs = [
+      { name: 'gemini-2.0-flash-exp', version: 'v1beta' },
+      { name: 'gemini-1.5-flash', version: 'v1' }
+    ];
 
-    for (const model of models) {
+    for (const config of modelConfigs) {
       try {
-        const apiVersion = model.includes('2.0') ? 'v1beta' : 'v1';
-        const response = await fetch(`https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${key}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/${config.version}/models/${config.name}:generateContent?key=${key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents, safetySettings })
@@ -672,26 +674,21 @@ async function handleMessage(sender_psid, messageText, env) {
         const resJson = await response.json();
         if (response.ok) {
           finalData = resJson;
-          break; // Success!
+          break; // Model Success
         } else {
-          lastErrorDetails = { model, keyIndex: i + 1, ...resJson };
-          console.warn(`[AI_RETRY] Model ${model} Key ${i+1} failed:`, response.status);
+          lastErrorDetails = { model: config.name, keyIndex: i + 1, status: response.status, ...resJson };
+          console.warn(`[AI_RETRY] Model ${config.name} Key ${i+1} failed:`, response.status);
           
-          // If it's a 503 (Demand) or 429 (Quota), try the NEXT MODEL on THIS KEY immediately
-          // Or if it's 404 (Not Found), try the next model
+          // If it's a permanent error (like 400), don't bother with other models on this key
           if (response.status !== 503 && response.status !== 429 && response.status !== 404) {
-            // If it's a permanent error (like 400), don't bother with other models on this key
             break; 
           }
         }
       } catch (e) {
-        lastErrorDetails = { model, message: e.message };
+        lastErrorDetails = { model: config.name, message: e.message };
       }
     }
-
-    if (finalData) break;
-    
-    // Small pause before trying a completely different API key
+    if (finalData) break; // Key Success
     await new Promise(r => setTimeout(r, 500));
   }
 
@@ -700,27 +697,25 @@ async function handleMessage(sender_psid, messageText, env) {
     aiText = finalData.candidates[0].content.parts[0].text;
     
     // Programmatic Sanitization (The "Iron Fist")
-    // Keep only the first and last occurrence of the particle
     const p = particle;
     const parts = aiText.split(p);
     if (parts.length > 3) {
-      // If found more than 2 times, reconstruct keeping only first and last
       const first = parts[0];
       const last = parts[parts.length - 1];
       const middle = parts.slice(1, -1).join('');
       aiText = `${first}${p}${middle}${p}${last}`;
     }
   } else {
-    // All keys failed or returned empty
+    // All attempts failed
     console.error('[AI_FATAL_ERROR]', JSON.stringify(lastErrorDetails));
     
-    // Sanitize before storing to KV
+    // Mask API keys before logging
     const sanitizeError = (obj) => JSON.parse(JSON.stringify(obj).replace(/AIzaSy[a-zA-Z0-9_\-]+/g, '[MASKED_KEY]'));
     
     await env.CHAT_LOGS.put('stat_last_ai_error', JSON.stringify({ 
       timestamp: Date.now(), 
       psid: sender_psid, 
-      error: lastErrorDetails ? sanitizeError(lastErrorDetails) : 'All keys exhausted'
+      error: lastErrorDetails ? sanitizeError(lastErrorDetails) : 'All keys and models exhausted'
     }));
     
     if (lastErrorDetails?.candidates?.[0]?.finishReason === 'SAFETY') {
