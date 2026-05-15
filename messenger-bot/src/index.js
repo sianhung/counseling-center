@@ -228,8 +228,8 @@ async function renderDashboard(request, env) {
           </button>
         </form>
         <form action="/dashboard/sweep" method="POST">
-          <button type="submit" class="sync-btn" style="background: #f59e0b;">
-            <span>🧹</span> Emergency Sweep (Fix Unanswered)
+          <button type="submit" class="sync-btn" style="background: #f59e0b; padding: 1.2rem 2rem; font-size: 1rem; box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3);">
+            <span>🧹</span> Fix All Unanswered Messages (Emergency Sweep)
           </button>
         </form>
       </header>
@@ -615,7 +615,7 @@ async function handleMessage(sender_psid, messageText, env) {
 
   // Prepare contents for Gemini with GREETING/CLOSING ONLY instruction
   const contents = [
-    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL LINGUISTIC RULE: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. \n1. Use the polite particle "${particle}" ONLY in your initial greeting and final closing sentence.\n2. DO NOT use the phrase "အားမနာတမ်း" in your responses.\n3. Example of a PERFECT GREETING: "မင်္ဂလာပါ${particle}။ Counseling Center မှ ကြိုဆိုပါတယ်။ ဘာများကူညီပေးရမလဲ၊ ဒါမှမဟုတ် ရင်ဖွင့်ချင်တာရှိရင် ပြောပြလို့ရပါတယ်။"\n4. This mirrors natural Myanmar conversation where these terms are used for formal opening and closing only.` }] },
+    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL LINGUISTIC RULE: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. \n1. Use the polite particle "${particle}" ONLY in your initial greeting and final closing sentence.\n2. DO NOT use the phrase "အားမနာတမ်း" in your responses.\n3. Example of a PERFECT GREETING: "မင်္ဂလာပါ${particle}။ Counseling Center မှ ကြိုဆိုပါတယ်။ ဘာများကူညီပေးရမလဲ၊ ဒါမှမဟုတ် ရင်ဖွင့်ချင်တာရှိရင် ပြောပြလို့ရပါတယ်။"\n4. STRICT PRIVACY: Each conversation is 100% PRIVATE. Never say "As I mentioned before" or "I already told you" unless the evidence is in the CHAT HISTORY below. Do not confuse different users.\n5. PRIORITY: Always answer every user with deep empathy. Never leave someone unanswered.` }] },
     ...history.slice(-10).flatMap(log => [
       { role: 'user', parts: [{ text: log.user_message }] },
       { role: 'model', parts: [{ text: log.ai_response }] }
