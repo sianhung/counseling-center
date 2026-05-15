@@ -22,6 +22,28 @@ async function renderDashboard(request, env) {
     return new Response('', { status: 303, headers: { 'Location': '/dashboard?tab=clients' } });
   }
 
+  // Handle Emergency Sweep (Reply to unanswered)
+  if (request.method === 'POST' && url.pathname === '/dashboard/sweep') {
+    const psids = (await env.CHAT_LOGS.get('all_active_psids', { type: 'json' })) || [];
+    let sweepCount = 0;
+    for (const psid of psids) {
+      const logs = (await env.CHAT_LOGS.get(`psid_${psid}`, { type: 'json' })) || [];
+      if (logs.length > 0) {
+        const lastLog = logs[logs.length - 1];
+        // If last message is from user and no AI response, or it's the fallback error
+        if (!lastLog.ai_response || lastLog.ai_response.includes('တောင်းပန်ပါတယ်ရှင့်')) {
+          const userMsg = lastLog.user_message;
+          if (userMsg) {
+            // We run this in background
+            ctx.waitUntil(handleMessage(psid, userMsg, env));
+            sweepCount++;
+          }
+        }
+      }
+    }
+    return new Response(`Sweep initiated for ${sweepCount} users.`, { status: 200 });
+  }
+
   try {
     const psids = (await env.CHAT_LOGS.get('all_active_psids', { type: 'json' })) || [];
     const totalMessages = (await env.CHAT_LOGS.get('stat_total_messages')) || 0;
@@ -200,9 +222,14 @@ async function renderDashboard(request, env) {
     ${activeTab === 'clients' ? `
       <header>
         <h2>Client Directory</h2>
-        <form action="/dashboard/sync-profiles" method="POST">
+        <form action="/dashboard/sync-profiles" method="POST" style="margin-right: 10px;">
           <button type="submit" class="sync-btn">
-            <span>🔄</span> Refresh User Profiles
+            <span>🔄</span> Sync Profiles
+          </button>
+        </form>
+        <form action="/dashboard/sweep" method="POST">
+          <button type="submit" class="sync-btn" style="background: #f59e0b;">
+            <span>🧹</span> Emergency Sweep (Fix Unanswered)
           </button>
         </form>
       </header>
@@ -531,11 +558,14 @@ export default {
           await env.CHAT_LOGS.put('stat_last_webhook', Date.now().toString());
 
           for (const entry of body.entry) {
-            const webhook_event = entry.messaging[0];
-            const sender_psid = webhook_event.sender.id;
+            if (!entry.messaging) continue;
+            for (const webhook_event of entry.messaging) {
+              const sender_psid = webhook_event.sender.id;
 
-            if (webhook_event.message && webhook_event.message.text) {
-              ctx.waitUntil(handleMessage(sender_psid, webhook_event.message.text, env));
+              // Ignore echos and ensure it's a real message
+              if (webhook_event.message && !webhook_event.message.is_echo && webhook_event.message.text) {
+                ctx.waitUntil(handleMessage(sender_psid, webhook_event.message.text, env));
+              }
             }
           }
           return new Response('EVENT_RECEIVED', { status: 200 });
