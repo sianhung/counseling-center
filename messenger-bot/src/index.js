@@ -27,6 +27,7 @@ async function renderDashboard(request, env) {
     const totalMessages = (await env.CHAT_LOGS.get('stat_total_messages')) || 0;
     const lastWebhook = (await env.CHAT_LOGS.get('stat_last_webhook')) || 'Never';
     const apiKeyCount = (env.GEMINI_API_KEY || '').split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy')).length;
+    const lastAiError = (await env.CHAT_LOGS.get('stat_last_ai_error', { type: 'json' })) || null;
     const currentInstruction = await env.CHAT_LOGS.get('settings_system_instruction') || 'You are a professional Christian AI Chat Assistant for "Counseling Center", speaking fluently in Myanmar (Burmese) language with deep empathy, active listening, and biblical wisdom. Use compassionate tone and offer spiritual guidance based on Christian principles.';
 
     let userGridHtml = '';
@@ -350,6 +351,14 @@ async function renderDashboard(request, env) {
 
         <!-- Main Canvas -->
         <div class="wf-main">
+          ${lastAiError ? `
+            <div style="position: absolute; top: 20px; right: 20px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 1rem; border-radius: 12px; color: #fca5a5; font-family: monospace; font-size: 0.75rem; z-index: 100; max-width: 400px; backdrop-filter: blur(8px);">
+              <div style="font-weight: 800; color: #ef4444; margin-bottom: 5px;">⚠️ LAST SYSTEM ERROR</div>
+              <div>Time: ${new Date(lastAiError.timestamp).toLocaleString()}</div>
+              <div>PSID: ${lastAiError.psid}</div>
+              <div style="margin-top: 5px; opacity: 0.8; white-space: pre-wrap;">${JSON.stringify(lastAiError.error, null, 2)}</div>
+            </div>
+          ` : ''}
           <div class="wf-canvas">
             <svg class="wf-svg-layer">
               <defs>
@@ -570,13 +579,26 @@ async function handleMessage(sender_psid, messageText, env) {
     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
   ];
 
-  // Call Gemini
+  // Call Gemini (Using 1.5 Flash for stability)
   const apiKey = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/)[0];
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents, safetySettings })
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[GEMINI_HTTP_ERROR]', response.status, errorText);
+    await env.CHAT_LOGS.put('stat_last_ai_error', JSON.stringify({ 
+      timestamp: Date.now(), 
+      psid: sender_psid, 
+      error: { status: response.status, message: errorText } 
+    }));
+    const fallback = "တောင်းပန်ပါတယ်ရှင့်။ အခုအချိန်မှာ စနစ်ပိုင်းဆိုင်ရာ အခက်အခဲလေးရှိနေလို့ ခဏနေမှ ပြန်ပြောပေးပါမယ်နော်။";
+    await callSendAPI(sender_psid, fallback, env.PAGE_ACCESS_TOKEN);
+    return;
+  }
 
   const data = await response.json();
   let aiText = '';
