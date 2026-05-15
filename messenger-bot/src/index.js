@@ -236,7 +236,7 @@ async function renderDashboard(request, env) {
           padding: 40px;
         }
 
-        /* SVG Layer for Curved Lines */
+        /* SVG Layer */
         .wf-svg-layer {
           position: absolute;
           inset: 0;
@@ -245,12 +245,12 @@ async function renderDashboard(request, env) {
         }
         .wf-line {
           fill: none;
-          stroke: rgba(99, 102, 241, 0.4);
+          stroke: rgba(148, 163, 184, 0.5);
           stroke-width: 2;
-          stroke-dasharray: 6;
-          animation: dash 25s linear infinite;
+          marker-end: url(#arrowhead);
         }
-        @keyframes dash { to { stroke-dashoffset: -1000; } }
+        .wf-line.main { stroke: rgba(99, 102, 241, 0.6); stroke-width: 2.5; }
+        .wf-line.dashed { stroke-dasharray: 5,5; stroke: rgba(148, 163, 184, 0.3); marker-end: none; }
 
         .node {
           background: #1e293b;
@@ -261,19 +261,34 @@ async function renderDashboard(request, env) {
           position: absolute;
           z-index: 2;
           box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-          transition: 0.3s;
         }
-        .node:hover { transform: translateY(-3px); border-color: #6366f1; }
+        .node:hover { border-color: #6366f1; }
         
         .node-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .node-icon { width: 32px; height: 32px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
-        .node-title { font-weight: 700; font-size: 0.8rem; color: white; letter-spacing: 0.3px; }
-        
+        .node-title { font-weight: 700; font-size: 0.8rem; color: white; }
         .node-body { font-size: 0.65rem; color: #94a3b8; line-height: 1.3; }
         
-        .port { width: 8px; height: 8px; background: #0f172a; border: 2px solid #6366f1; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); }
+        .port { width: 8px; height: 8px; background: #0f172a; border: 2px solid #94a3b8; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); }
         .port.in { left: -5px; }
-        .port.out { right: -5px; }
+        .port.out { right: -5px; border-color: #6366f1; }
+        
+        .port-plus {
+          position: absolute;
+          right: -25px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 14px;
+          height: 14px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 3px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          color: #94a3b8;
+        }
 
         .sub-node-wrap { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 8px; }
         .floating-node {
@@ -288,41 +303,30 @@ async function renderDashboard(request, env) {
           font-size: 1rem;
         }
         .float-label { font-size: 0.55rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-top: 3px; }
-
-        .node-controls {
-          position: absolute;
-          top: -35px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: #1e293b;
-          padding: 4px 10px;
-          border-radius: 8px;
-          display: flex;
-          gap: 12px;
-          border: 1px solid rgba(255,255,255,0.1);
-          opacity: 0;
-          transition: 0.2s;
-        }
-        .node:hover .node-controls { opacity: 1; top: -42px; }
-        .control-btn { font-size: 0.7rem; cursor: pointer; color: #94a3b8; }
-        .control-btn:hover { color: white; }
       </style>
 
       <div class="wf-container">
         <svg class="wf-svg-layer">
-          <path class="wf-line" d="M 240 300 C 270 300 270 300 300 300" />
-          <path class="wf-line" d="M 490 300 C 530 300 540 200 580 160" />
-          <path class="wf-line" d="M 490 300 C 530 300 540 400 580 440" />
-          <path class="wf-line" d="M 770 160 C 810 160 820 300 860 300" />
-          <path class="wf-line" d="M 770 440 C 810 440 820 300 860 300" />
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="rgba(148, 163, 184, 0.8)" />
+            </marker>
+          </defs>
+          <!-- Main Flow -->
+          <path class="wf-line main" d="M 240 300 L 290 300" />
+          <path class="wf-line main" d="M 490 300 C 530 300 540 200 570 160" />
+          <path class="wf-line main" d="M 490 300 C 530 300 540 400 570 440" />
+          <path class="wf-line main" d="M 770 160 C 810 160 820 300 850 300" />
+          <path class="wf-line main" d="M 770 440 C 810 440 820 300 850 300" />
+          
+          <!-- Dashed Detail Lines -->
+          <path class="wf-line dashed" d="M 395 342 L 395 400" />
+          <path class="wf-line dashed" d="M 675 198 L 675 250" />
         </svg>
 
         <div class="wf-canvas">
           <!-- TRIGGER -->
           <div class="node" style="left: 50px; top: 250px;">
-            <div class="node-controls">
-              <span class="control-btn">▶️</span> <span class="control-btn">⚙️</span> <span class="control-btn">🗑️</span>
-            </div>
             <div class="node-header"><div class="node-icon">💬</div><div class="node-title">Messenger Trigger</div></div>
             <div class="node-body">Incoming Webhook event.</div>
             <div class="port out"></div>
@@ -334,8 +338,8 @@ async function renderDashboard(request, env) {
             <div class="node-body">Logic and security routing.</div>
             <div class="port in"></div>
             <div class="port out"></div>
-            <div class="sub-node-wrap" style="bottom: -100px; left: 50%; transform: translateX(-50%);">
-              <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+            <div class="port-plus">+</div>
+            <div class="sub-node-wrap" style="bottom: -110px; left: 50%; transform: translateX(-50%);">
               <div class="floating-node">🛡️</div>
               <div class="float-label">Security</div>
             </div>
@@ -350,6 +354,11 @@ async function renderDashboard(request, env) {
             <div class="node-body">Flash model reasoning.</div>
             <div class="port in"></div>
             <div class="port out"></div>
+            <div class="port-plus">+</div>
+            <div class="sub-node-wrap" style="bottom: -110px; left: 50%; transform: translateX(-50%);">
+              <div class="floating-node">✨</div>
+              <div class="float-label">Flash</div>
+            </div>
           </div>
 
           <!-- MEMORY -->
@@ -370,13 +379,9 @@ async function renderDashboard(request, env) {
             <div class="port in"></div>
           </div>
         </div>
-
-        <div style="position: absolute; bottom: 15px; left: 20px; display: flex; gap: 15px;">
-          <div style="background: rgba(30, 41, 59, 0.6); padding: 6px 12px; border-radius: 8px; color: #64748b; font-size: 0.65rem;">CPU: 8%</div>
-          <div style="background: rgba(30, 41, 59, 0.6); padding: 6px 12px; border-radius: 8px; color: #64748b; font-size: 0.65rem;">MEM: 128MB</div>
-        </div>
       </div>
     ` : ''}
+
 
 
 
