@@ -12,6 +12,16 @@ async function renderDashboard(request, env) {
     return new Response('', { status: 303, headers: { 'Location': '/dashboard?tab=settings' } });
   }
 
+  // Handle Sync Profiles
+  if (request.method === 'POST' && url.pathname === '/dashboard/sync-profiles') {
+    const psids = (await env.CHAT_LOGS.get('all_active_psids', { type: 'json' })) || [];
+    // We do this in a loop, but in production we should limit this or do it background
+    for (const psid of psids) {
+      await getFacebookProfile(psid, env, true); // Force refresh
+    }
+    return new Response('', { status: 303, headers: { 'Location': '/dashboard?tab=clients' } });
+  }
+
   try {
     const psids = (await env.CHAT_LOGS.get('all_active_psids', { type: 'json' })) || [];
     const totalMessages = (await env.CHAT_LOGS.get('stat_total_messages')) || 0;
@@ -86,6 +96,9 @@ async function renderDashboard(request, env) {
     .content { flex: 1; padding: 2.5rem; overflow-y: auto; background: radial-gradient(circle at 100% 0%, #eef2ff 0%, #f8fafc 50%); position: relative; }
     header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
     h2 { margin: 0; font-size: 1.8rem; font-weight: 800; color: #0f172a; }
+
+    .sync-btn { background: white; color: var(--text); border: 1px solid var(--border); padding: 0.6rem 1.2rem; border-radius: 12px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
+    .sync-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
 
     /* Stats */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
@@ -171,7 +184,14 @@ async function renderDashboard(request, env) {
 
   <div class="content">
     ${activeTab === 'clients' ? `
-      <header><h2>Client Directory</h2></header>
+      <header>
+        <h2>Client Directory</h2>
+        <form action="/dashboard/sync-profiles" method="POST">
+          <button type="submit" class="sync-btn">
+            <span>🔄</span> Refresh User Profiles
+          </button>
+        </form>
+      </header>
       <div class="user-grid">${userGridHtml || '<p>No clients registered yet.</p>'}</div>
       
       <header style="margin-top: 3rem;">
@@ -393,21 +413,36 @@ async function handleMessage(sender_psid, messageText, env) {
   await callSendAPI(sender_psid, aiText, env.PAGE_ACCESS_TOKEN);
 }
 
-async function getFacebookProfile(psid, env) {
+async function getFacebookProfile(psid, env, force = false) {
   const cacheKey = `profile_${psid}`;
-  const cached = await env.CHAT_LOGS.get(cacheKey, { type: 'json' });
-  if (cached) return cached;
+  if (!force) {
+    const cached = await env.CHAT_LOGS.get(cacheKey, { type: 'json' });
+    // Only return cached if it has a real name (not placeholder)
+    if (cached && cached.name && !cached.name.startsWith('User ')) return cached;
+  }
 
   try {
     const response = await fetch(`https://graph.facebook.com/${psid}?fields=first_name,last_name,profile_pic&access_token=${env.PAGE_ACCESS_TOKEN}`);
     const data = await response.json();
+    
+    if (data.error) {
+       console.error('FB API Error:', data.error);
+       return { name: `User ${psid}`, pic: '' };
+    }
+
     const profile = {
       name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || `User ${psid}`,
       pic: data.profile_pic || ''
     };
-    await env.CHAT_LOGS.put(cacheKey, JSON.stringify(profile));
+    
+    // Only cache if we got a real name
+    if (profile.name !== `User ${psid}`) {
+      await env.CHAT_LOGS.put(cacheKey, JSON.stringify(profile));
+    }
+    
     return profile;
   } catch (e) {
+    console.error('Fetch Error:', e);
     return { name: `User ${psid}`, pic: '' };
   }
 }
