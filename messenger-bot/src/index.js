@@ -601,15 +601,17 @@ async function handleMessage(sender_psid, messageText, env) {
     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
   ];
 
-  // Multi-Key & Multi-Model Fallback Strategy
+  // Key-First Multi-Model Fallback Strategy
   const apiKeys = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy'));
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash-exp'];
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash'];
   let finalData = null;
   let lastErrorDetails = null;
 
-  for (const model of models) {
-    for (let i = 0; i < apiKeys.length; i++) {
-      const key = apiKeys[i];
+  for (let i = 0; i < apiKeys.length; i++) {
+    const key = apiKeys[i];
+    let keyFailedCompletely = true;
+
+    for (const model of models) {
       try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${key}`, {
           method: 'POST',
@@ -620,21 +622,28 @@ async function handleMessage(sender_psid, messageText, env) {
         const resJson = await response.json();
         if (response.ok) {
           finalData = resJson;
+          keyFailedCompletely = false;
           break; // Success!
         } else {
           lastErrorDetails = { model, keyIndex: i + 1, ...resJson };
           console.warn(`[AI_RETRY] Model ${model} Key ${i+1} failed:`, response.status);
           
-          // If high demand or rate limit, wait a bit before next try
-          if (response.status === 503 || response.status === 429) {
-            await new Promise(r => setTimeout(r, 1000));
+          // If it's a 503 (Demand) or 429 (Quota), try the NEXT MODEL on THIS KEY immediately
+          // Or if it's 404 (Not Found), try the next model
+          if (response.status !== 503 && response.status !== 429 && response.status !== 404) {
+            // If it's a permanent error (like 400), don't bother with other models on this key
+            break; 
           }
         }
       } catch (e) {
         lastErrorDetails = { model, message: e.message };
       }
     }
+
     if (finalData) break;
+    
+    // Small pause before trying a completely different API key
+    await new Promise(r => setTimeout(r, 500));
   }
 
   let aiText = '';
