@@ -671,7 +671,6 @@ async function handleMessage(sender_psid, messageText, env) {
         const resJson = await response.json();
         if (response.ok) {
           finalData = resJson;
-          keyFailedCompletely = false;
           break; // Success!
         } else {
           lastErrorDetails = { model, keyIndex: i + 1, ...resJson };
