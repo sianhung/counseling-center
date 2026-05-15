@@ -659,8 +659,8 @@ async function handleMessage(sender_psid, messageText, env) {
   for (let i = 0; i < apiKeys.length; i++) {
     const key = apiKeys[i];
     const modelConfigs = [
-      { name: 'gemini-2.0-flash-exp', version: 'v1beta' },
-      { name: 'gemini-1.5-flash', version: 'v1' }
+      { name: 'gemini-2.0-flash', version: 'v1beta' },
+      { name: 'gemini-2.0-flash-lite', version: 'v1beta' }
     ];
 
     for (const config of modelConfigs) {
