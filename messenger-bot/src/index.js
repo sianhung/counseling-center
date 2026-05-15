@@ -579,9 +579,9 @@ async function handleMessage(sender_psid, messageText, env) {
     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
   ];
 
-  // Call Gemini (Using v1 for better stability with 1.5 Flash)
+  // Call Gemini (Using v1 with 2.5 Flash as requested)
   const apiKey = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/)[0];
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents, safetySettings })
