@@ -640,6 +640,18 @@ async function handleMessage(sender_psid, messageText, env) {
   let aiText = '';
   if (finalData && finalData.candidates && finalData.candidates[0] && finalData.candidates[0].content) {
     aiText = finalData.candidates[0].content.parts[0].text;
+    
+    // Programmatic Sanitization (The "Iron Fist")
+    // Keep only the first and last occurrence of the particle
+    const p = particle;
+    const parts = aiText.split(p);
+    if (parts.length > 3) {
+      // If found more than 2 times, reconstruct keeping only first and last
+      const first = parts[0];
+      const last = parts[parts.length - 1];
+      const middle = parts.slice(1, -1).join('');
+      aiText = `${first}${p}${middle}${p}${last}`;
+    }
   } else {
     // All keys failed or returned empty
     console.error('[AI_FATAL_ERROR]', JSON.stringify(lastErrorDetails));
