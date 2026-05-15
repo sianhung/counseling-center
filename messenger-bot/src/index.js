@@ -338,9 +338,9 @@ async function renderDashboard(request, env) {
             <div class="block-status"></div>
             <div class="block-info"><span>Gemini AI Core</span><small>Status: Ready</small></div>
           </div>
-          <div class="block-item" style="opacity: 0.5;">
-            <div class="block-status" style="background: #94a3b8; box-shadow: none;"></div>
-            <div class="block-info"><span>Analytics Engine</span><small>Status: Offline</small></div>
+          <div class="block-item">
+            <div class="block-status"></div>
+            <div class="block-info"><span>Analytics Engine</span><small>Status: Analyzing</small></div>
           </div>
         </div>
 
