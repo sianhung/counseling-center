@@ -236,7 +236,7 @@ async function renderDashboard(request, env) {
           padding: 40px;
         }
 
-        /* SVG Layer */
+        /* SVG Sequential Drawing Animation */
         .wf-svg-layer {
           position: absolute;
           inset: 0;
@@ -245,12 +245,17 @@ async function renderDashboard(request, env) {
         }
         .wf-line {
           fill: none;
-          stroke: rgba(148, 163, 184, 0.5);
-          stroke-width: 2;
+          stroke: rgba(99, 102, 241, 0.5);
+          stroke-width: 2.5;
+          stroke-dasharray: 1000;
+          stroke-dashoffset: 1000;
+          animation: draw 1.5s ease-out forwards;
           marker-end: url(#arrowhead);
         }
-        .wf-line.main { stroke: rgba(99, 102, 241, 0.6); stroke-width: 2.5; }
-        .wf-line.dashed { stroke-dasharray: 5,5; stroke: rgba(148, 163, 184, 0.3); marker-end: none; }
+        @keyframes draw { to { stroke-dashoffset: 0; } }
+
+        .wf-line.dashed { stroke: rgba(148, 163, 184, 0.3); stroke-dasharray: 5,5; stroke-dashoffset: 0; animation: fadein 1s forwards; marker-end: none; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 
         .node {
           background: #1e293b;
@@ -261,34 +266,33 @@ async function renderDashboard(request, env) {
           position: absolute;
           z-index: 2;
           box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+          animation: nodePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          opacity: 0;
         }
-        .node:hover { border-color: #6366f1; }
+        @keyframes nodePop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         
+        .step-badge {
+          position: absolute;
+          top: -12px;
+          left: -12px;
+          background: #6366f1;
+          color: white;
+          font-size: 0.6rem;
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 20px;
+          z-index: 10;
+          box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4);
+        }
+
         .node-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .node-icon { width: 32px; height: 32px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
         .node-title { font-weight: 700; font-size: 0.8rem; color: white; }
         .node-body { font-size: 0.65rem; color: #94a3b8; line-height: 1.3; }
         
-        .port { width: 8px; height: 8px; background: #0f172a; border: 2px solid #94a3b8; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); }
+        .port { width: 8px; height: 8px; background: #0f172a; border: 2px solid #6366f1; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%); }
         .port.in { left: -5px; }
-        .port.out { right: -5px; border-color: #6366f1; }
-        
-        .port-plus {
-          position: absolute;
-          right: -25px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 14px;
-          height: 14px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 3px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 10px;
-          color: #94a3b8;
-        }
+        .port.out { right: -5px; }
 
         .sub-node-wrap { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 8px; }
         .floating-node {
@@ -309,78 +313,82 @@ async function renderDashboard(request, env) {
         <svg class="wf-svg-layer">
           <defs>
             <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill="rgba(148, 163, 184, 0.8)" />
+              <polygon points="0 0, 10 3.5, 0 7" fill="rgba(99, 102, 241, 0.8)" />
             </marker>
           </defs>
-          <!-- Main Flow -->
-          <path class="wf-line main" d="M 240 300 L 290 300" />
-          <path class="wf-line main" d="M 490 300 C 530 300 540 200 570 160" />
-          <path class="wf-line main" d="M 490 300 C 530 300 540 400 570 440" />
-          <path class="wf-line main" d="M 770 160 C 810 160 820 300 850 300" />
-          <path class="wf-line main" d="M 770 440 C 810 440 820 300 850 300" />
           
-          <!-- Dashed Detail Lines -->
-          <path class="wf-line dashed" d="M 395 342 L 395 400" />
-          <path class="wf-line dashed" d="M 675 198 L 675 250" />
+          <!-- Sequential Drawing Paths -->
+          <path class="wf-line" style="animation-delay: 0.5s;" d="M 240 300 L 290 300" />
+          <path class="wf-line" style="animation-delay: 2s;" d="M 490 300 C 530 300 540 200 570 160" />
+          <path class="wf-line" style="animation-delay: 2s;" d="M 490 300 C 530 300 540 400 570 440" />
+          <path class="wf-line" style="animation-delay: 3.5s;" d="M 770 160 C 810 160 820 300 850 300" />
+          <path class="wf-line" style="animation-delay: 3.5s;" d="M 770 440 C 810 440 820 300 850 300" />
+          
+          <!-- Static Dashed Lines -->
+          <path class="wf-line dashed" style="animation-delay: 1.5s;" d="M 395 342 L 395 400" />
+          <path class="wf-line dashed" style="animation-delay: 3s;" d="M 675 198 L 675 250" />
         </svg>
 
         <div class="wf-canvas">
-          <!-- TRIGGER -->
-          <div class="node" style="left: 50px; top: 250px;">
-            <div class="node-header"><div class="node-icon">💬</div><div class="node-title">Messenger Trigger</div></div>
-            <div class="node-body">Incoming Webhook event.</div>
+          <!-- STEP 1 -->
+          <div class="node" style="left: 50px; top: 250px; animation-delay: 0s;">
+            <div class="step-badge">STEP 1</div>
+            <div class="node-header"><div class="node-icon">💬</div><div class="node-title">Message Received</div></div>
+            <div class="node-body">Webhook trigger from Meta.</div>
             <div class="port out"></div>
           </div>
 
-          <!-- ROUTER -->
-          <div class="node" style="left: 300px; top: 250px;">
-            <div class="node-header"><div class="node-icon">🔀</div><div class="node-title">Query Router</div></div>
-            <div class="node-body">Logic and security routing.</div>
+          <!-- STEP 2 -->
+          <div class="node" style="left: 300px; top: 250px; animation-delay: 1.2s;">
+            <div class="step-badge">STEP 2</div>
+            <div class="node-header"><div class="node-icon">🔀</div><div class="node-title">Send Router</div></div>
+            <div class="node-body">Processing logic & security.</div>
             <div class="port in"></div>
             <div class="port out"></div>
-            <div class="port-plus">+</div>
             <div class="sub-node-wrap" style="bottom: -110px; left: 50%; transform: translateX(-50%);">
               <div class="floating-node">🛡️</div>
-              <div class="float-label">Security</div>
+              <div class="float-label">Security Check</div>
             </div>
           </div>
 
-          <!-- AI CORE -->
-          <div class="node" style="left: 580px; top: 110px;">
+          <!-- STEP 3 -->
+          <div class="node" style="left: 580px; top: 110px; animation-delay: 2.7s;">
+            <div class="step-badge">STEP 3</div>
             <div class="node-header">
               <div class="node-icon"><img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png" style="width: 20px;"></div>
-              <div class="node-title">Gemini 2.0</div>
+              <div class="node-title">AI Core</div>
             </div>
-            <div class="node-body">Flash model reasoning.</div>
+            <div class="node-body">Gemini 2.0 reasoning.</div>
             <div class="port in"></div>
             <div class="port out"></div>
-            <div class="port-plus">+</div>
             <div class="sub-node-wrap" style="bottom: -110px; left: 50%; transform: translateX(-50%);">
               <div class="floating-node">✨</div>
-              <div class="float-label">Flash</div>
+              <div class="float-label">Reasoning</div>
             </div>
           </div>
 
-          <!-- MEMORY -->
-          <div class="node" style="left: 580px; top: 390px;">
+          <!-- STEP 3 (Parallel) -->
+          <div class="node" style="left: 580px; top: 390px; animation-delay: 2.7s;">
             <div class="node-header">
               <div class="node-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4b/Cloudflare_Logo.svg" style="width: 20px;"></div>
-              <div class="node-title">Worker KV</div>
+              <div class="node-title">History Store</div>
             </div>
-            <div class="node-body">Memory persistence.</div>
+            <div class="node-body">Worker KV persistence.</div>
             <div class="port in"></div>
             <div class="port out"></div>
           </div>
 
-          <!-- RESPONSE -->
-          <div class="node" style="left: 860px; top: 250px;">
-            <div class="node-header"><div class="node-icon">🚀</div><div class="node-title">Response</div></div>
-            <div class="node-body">Final Chat Output.</div>
+          <!-- STEP 4 -->
+          <div class="node" style="left: 860px; top: 250px; animation-delay: 4.2s;">
+            <div class="step-badge">STEP 4</div>
+            <div class="node-header"><div class="node-icon">🚀</div><div class="node-title">Send Response</div></div>
+            <div class="node-body">Final delivery to user.</div>
             <div class="port in"></div>
           </div>
         </div>
       </div>
     ` : ''}
+
 
 
 
