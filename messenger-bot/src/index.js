@@ -27,7 +27,16 @@ async function renderDashboard(request, env) {
     const totalMessages = (await env.CHAT_LOGS.get('stat_total_messages')) || 0;
     const lastWebhook = (await env.CHAT_LOGS.get('stat_last_webhook')) || 'Never';
     const apiKeyCount = (env.GEMINI_API_KEY || '').split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy')).length;
-    const lastAiError = (await env.CHAT_LOGS.get('stat_last_ai_error', { type: 'json' })) || null;
+    const lastAiErrorRaw = (await env.CHAT_LOGS.get('stat_last_ai_error', { type: 'json' })) || null;
+    
+    // Sanitize error display to prevent leakage
+    const sanitize = (obj) => {
+      let str = JSON.stringify(obj);
+      return str ? str.replace(/AIzaSy[a-zA-Z0-9_\-]+/g, '[MASKED_KEY]') : '';
+    };
+    const lastAiErrorStr = lastAiErrorRaw ? sanitize(lastAiErrorRaw.error) : '';
+    const lastAiError = lastAiErrorRaw;
+
     const currentInstruction = await env.CHAT_LOGS.get('settings_system_instruction') || 'You are a professional Christian AI Chat Assistant for "Counseling Center", speaking fluently in Myanmar (Burmese) language with deep empathy, active listening, and biblical wisdom. Use compassionate tone and offer spiritual guidance based on Christian principles.';
 
     let userGridHtml = '';
@@ -356,7 +365,7 @@ async function renderDashboard(request, env) {
               <div style="font-weight: 800; color: #ef4444; margin-bottom: 5px;">⚠️ LAST SYSTEM ERROR</div>
               <div>Time: ${new Date(lastAiError.timestamp).toLocaleString()}</div>
               <div>PSID: ${lastAiError.psid}</div>
-              <div style="margin-top: 5px; opacity: 0.8; white-space: pre-wrap;">${JSON.stringify(lastAiError.error, null, 2)}</div>
+              <div style="margin-top: 5px; opacity: 0.8; white-space: pre-wrap;">${lastAiErrorStr}</div>
             </div>
           ` : ''}
           <div class="wf-canvas">
@@ -625,10 +634,14 @@ async function handleMessage(sender_psid, messageText, env) {
   } else {
     // All keys failed or returned empty
     console.error('[AI_FATAL_ERROR]', JSON.stringify(lastErrorDetails));
+    
+    // Sanitize before storing to KV
+    const sanitizeError = (obj) => JSON.parse(JSON.stringify(obj).replace(/AIzaSy[a-zA-Z0-9_\-]+/g, '[MASKED_KEY]'));
+    
     await env.CHAT_LOGS.put('stat_last_ai_error', JSON.stringify({ 
       timestamp: Date.now(), 
       psid: sender_psid, 
-      error: lastErrorDetails || 'All keys exhausted'
+      error: lastErrorDetails ? sanitizeError(lastErrorDetails) : 'All keys exhausted'
     }));
     
     if (lastErrorDetails?.candidates?.[0]?.finishReason === 'SAFETY') {
