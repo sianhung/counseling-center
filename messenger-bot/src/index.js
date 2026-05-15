@@ -562,16 +562,38 @@ async function handleMessage(sender_psid, messageText, env) {
     { role: 'user', parts: [{ text: messageText }] }
   ];
 
+  // Gemini Safety Settings (Allowing sensitive counseling topics)
+  const safetySettings = [
+    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+  ];
+
   // Call Gemini
-  const apiKey = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/)[0]; // Use first key
+  const apiKey = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/)[0];
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents })
+    body: JSON.stringify({ contents, safetySettings })
   });
 
   const data = await response.json();
-  const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'I apologize, I am having trouble processing that right now.';
+  let aiText = '';
+
+  if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+    aiText = data.candidates[0].content.parts[0].text;
+  } else {
+    // Detect Safety Block or Error
+    console.error('[AI_ERROR]', JSON.stringify(data));
+    await env.CHAT_LOGS.put('stat_last_ai_error', JSON.stringify({ timestamp: Date.now(), psid: sender_psid, error: data }));
+    
+    if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+      aiText = "ကျမတို့ Counseling Center မှ အမြဲအသင့်ရှိနေပါတယ်။ အခုပြောတဲ့အကြောင်းအရာက အရမ်းလေးနက်တဲ့အတွက်ကြောင့် စိတ်အေးအေးထားပြီး ခဏစောင့်ပေးပါနော်။ ကျမတို့ လူကိုယ်တိုင် ပြန်လည်ဖြေကြားပေးပါမယ်။ (We are here for you. This topic is very serious, please stay calm. We will reply to you personally soon.)";
+    } else {
+      aiText = "တောင်းပန်ပါတယ်ရှင့်။ အခုအချိန်မှာ ခဏလေး အခက်အခဲဖြစ်နေလို့ ခဏနေမှ ပြန်ပြောပေးပါမယ်နော်။ (Apologies, I'm having a temporary difficulty. I'll get back to you soon.)";
+    }
+  }
 
   // Log conversation
   history.push({
