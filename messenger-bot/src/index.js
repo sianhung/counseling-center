@@ -652,7 +652,7 @@ async function handleMessage(sender_psid, messageText, env) {
   ];
 
   // Resilient Multi-Key & Multi-Model Rotation
-  const apiKeys = env.GEMINI_API_KEY.split(/[\s,;\n\r]+/).filter(k => k.startsWith('AIzaSy'));
+  const apiKeys = (env.GEMINI_API_KEY.match(/AIzaSy[a-zA-Z0-9_\-]+/g) || []);
   let finalData = null;
   let lastErrorDetails = null;
 
