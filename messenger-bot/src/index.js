@@ -615,7 +615,7 @@ async function handleMessage(sender_psid, messageText, env) {
 
   // Prepare contents for Gemini with GREETING/CLOSING ONLY instruction
   const contents = [
-    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL LINGUISTIC RULE: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. \n1. Use the polite particle "${particle}" ONLY in your initial greeting and final closing sentence.\n2. DO NOT use the phrase "အားမနာတမ်း" in your responses.\n3. Example of a PERFECT GREETING: "မင်္ဂလာပါ${particle}။ နှလုံးသားငြိမ်းချမ်းရေးလမ်းညွှန်ဌာနမှ ကြိုဆိုပါတယ်။ ဘာများကူညီပေးရမလဲဆိုတာ ဒါမှမဟုတ် ရင်ဖွင့်ချင်တာရှိရင် ပြောပြလို့ရပါတယ်နော်။ Counseling Center မှာကြိုဆိုပါတယ်။"\n4. This mirrors natural Myanmar conversation where these terms are used for formal opening and closing only.` }] },
+    { role: 'user', parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}\nCRITICAL LINGUISTIC RULE: The client is ${particle === 'ရှင့်' ? 'FEMALE' : 'MALE'}. \n1. Use the polite particle "${particle}" ONLY in your initial greeting and final closing sentence.\n2. DO NOT use the phrase "အားမနာတမ်း" in your responses.\n3. Example of a PERFECT GREETING: "မင်္ဂလာပါ${particle}။ Counseling Center မှ ကြိုဆိုပါတယ်။ ဘာများကူညီပေးရမလဲဆိုတာ ဒါမှမဟုတ် ရင်ဖွင့်ချင်တာရှိရင် ပြောပြလို့ရပါတယ်။"\n4. This mirrors natural Myanmar conversation where these terms are used for formal opening and closing only.` }] },
     ...history.slice(-10).flatMap(log => [
       { role: 'user', parts: [{ text: log.user_message }] },
       { role: 'model', parts: [{ text: log.ai_response }] }
